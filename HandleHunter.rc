@@ -9,6 +9,12 @@ IDI_APP_ICON ICON "icon.ico"
 // Embed the application manifest
 1 RT_MANIFEST "manifest.xml"
 
+// Accelerator table for keyboard shortcuts
+IDC_ACCEL_REFRESH ACCELERATORS
+BEGIN
+    VK_F5, IDC_REFRESH_BTN, VIRTKEY
+END
+
 // Version Information
 VS_VERSION_INFO VERSIONINFO
 FILEVERSION     1,0,0,0
