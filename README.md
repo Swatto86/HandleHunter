@@ -4,7 +4,7 @@ A lightweight Windows utility for managing file locks on the local machine, buil
 
 ## Features
 
-- **Modern Dark UI**: Beautiful dark mode with rounded corners and smooth animations
+- **System Theme Support**: Automatically detects and respects Windows dark/light mode settings
 - **Auto-Start**: Automatically displays open files on the local machine when launched
 - **Multi-Select**: Select and release multiple file locks at once (Ctrl+Click, Shift+Click)
 - **Search/Filter**: Real-time filtering as you type
@@ -81,8 +81,8 @@ HandleHunter/
 ├── main.c              # Application entry point (WinMain)
 ├── gui.c               # GUI creation and window management
 ├── gui.h               # GUI function declarations
-├── modern_ui.c         # Modern UI implementation (dark mode, rounded buttons)
-├── modern_ui.h         # Modern UI function declarations
+├── modern_ui.c         # Windows theme detection and styling
+├── modern_ui.h         # Theme detection function declarations
 ├── netapi.c            # Windows NetAPI wrapper functions
 ├── netapi.h            # NetAPI function declarations
 ├── lockinfo.c          # Dynamic array implementation
@@ -104,8 +104,8 @@ HandleHunter/
 - **Unicode**: Full Unicode support (UTF-16)
 - **Memory Management**: Manual malloc/free (no garbage collection)
 - **DPI Aware**: PerMonitorV2 (Windows 10+) with fallback
-- **Visual Styles**: Custom dark theme with owner-drawn controls
-- **Modern Features**: Dark mode title bar, rounded corners (Windows 11), smooth animations
+- **Visual Styles**: Uses standard Windows controls with system theme detection
+- **Modern Features**: Conditional dark mode title bar (based on Windows theme), rounded corners (Windows 11)
 
 ## License
 
