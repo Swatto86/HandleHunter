@@ -13,3 +13,4 @@
 # OS-specific files
 Thumbs.db
 .DS_Store
+_codeql_detected_source_root
