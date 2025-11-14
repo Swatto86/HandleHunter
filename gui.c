@@ -2,563 +2,478 @@
  * gui.c - GUI creation and window management
  * 
  * This file handles all user interface creation and message processing.
- * It creates the main window, child controls (buttons, edit boxes, ListView),
- * and processes Windows messages.
  */
 
-#include <windows.h>    // Windows API
-#include <commctrl.h>   // Common controls (ListView, StatusBar)
-#include <stdio.h>       // Standard I/O (for swprintf)
-#include <string.h>      // String functions (for wcsncpy, wcsstr, _wcslwr)
-#include "resource.h"     // Control ID definitions
-#include "gui.h"          // AppState structure
-#include "netapi.h"       // Network API wrappers
-
-// Link against common controls library (required for ListView, StatusBar)
-#pragma comment(lib, "comctl32.lib")
-
-// Control ID definitions
-// These IDs are used to identify controls in WM_COMMAND messages
-#define IDC_SERVER_EDIT      1001    // Server name input box
-#define IDC_SEARCH_EDIT      1002    // Search filter input box
-#define IDC_LISTVIEW         1003    // ListView showing file locks
-#define IDC_CONNECT_BTN      1004    // Connect button
-#define IDC_REFRESH_BTN      1005    // Refresh button
-#define IDC_RELEASE_BTN      1006    // Release lock button
-#define IDC_STATUSBAR        1007    // Status bar at bottom
+#include <windows.h>
+#include <commctrl.h>
+#include <stdio.h>
+#include <string.h>
+#include <uxtheme.h>
+#include "resource.h"
+#include "gui.h"
+#include "netapi.h"
+#include "modern_ui.h"
 
 /**
  * Create and register the main application window
- * 
- * @param hInstance - Application instance handle
- * @return Window handle on success, NULL on failure
- * 
- * This function registers a window class and creates the main window.
- * The window is created but not shown (call ShowWindow() after this).
  */
 HWND CreateMainWindow(HINSTANCE hInstance) {
-    // Define window class structure
-    // WNDCLASSEXW is the extended version (supports small icon)
     WNDCLASSEXW wc = {0};
-    wc.cbSize = sizeof(WNDCLASSEXW);                    // Structure size (required)
-    wc.style = CS_HREDRAW | CS_VREDRAW;                  // Redraw on horizontal/vertical resize
-    wc.lpfnWndProc = MainWindowProc;                     // Pointer to window procedure (message handler)
-    wc.hInstance = hInstance;                            // Application instance
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);            // Default arrow cursor
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);       // System window background color
-    wc.lpszClassName = L"HandleHunterClass";            // Unique class name
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);          // Default application icon
-    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);        // Small icon for taskbar
+    wc.cbSize = sizeof(WNDCLASSEXW);
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = MainWindowProc;
+    wc.hInstance = hInstance;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = CreateSolidBrush(COLOR_BG_DARK);
+    wc.lpszClassName = L"HandleHunterClass";
+    wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
+    wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
     
-    // Register the window class with Windows
-    // This must be done before creating any windows of this class
     if (!RegisterClassExW(&wc)) {
         MessageBoxW(NULL, L"Window registration failed!", L"Error", MB_ICONERROR);
         return NULL;
     }
     
-    // Create the main window using the registered class
     HWND hwnd = CreateWindowExW(
-        0,                              // Extended window style (none)
-        L"HandleHunterClass",          // Class name (must match registered class)
-        L"HandleHunter",               // Window title (shown in title bar)
-        WS_OVERLAPPEDWINDOW,           // Window style (has title bar, min/max buttons, etc.)
-        CW_USEDEFAULT,                 // X position (let Windows choose)
-        CW_USEDEFAULT,                 // Y position (let Windows choose)
-        1000,                          // Window width in pixels
-        600,                           // Window height in pixels
-        NULL,                          // Parent window (NULL = top-level)
-        NULL,                          // Menu handle (NULL = no menu)
-        hInstance,                     // Application instance
-        NULL                           // Additional creation data (NULL = none)
+        0,
+        L"HandleHunterClass",
+        L"HandleHunter - Local File Locks",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        1000, 600,
+        NULL, NULL,
+        hInstance,
+        NULL
     );
     
-    // Check if window creation succeeded
     if (!hwnd) {
         MessageBoxW(NULL, L"Window creation failed!", L"Error", MB_ICONERROR);
         return NULL;
     }
     
-    return hwnd;  // Return window handle
+    // Enable dark mode and modern styling
+    EnableDarkMode(hwnd);
+    ApplyModernWindowStyle(hwnd);
+    
+    return hwnd;
 }
 
 /**
- * Create all child controls (buttons, edit boxes, ListView, etc.)
- * 
- * @param hwndParent - Handle to parent window
- * @param state      - Pointer to application state (to store control handles)
- * 
- * This function creates all the UI controls that appear inside the main window.
- * Control handles are stored in the AppState structure for later use.
+ * Create all child controls
  */
 void CreateControls(HWND hwndParent, AppState* state) {
-    // Get the instance handle from the parent window
-    // Needed for creating child windows
     HINSTANCE hInst = (HINSTANCE)GetWindowLongPtr(hwndParent, GWLP_HINSTANCE);
-    
-    // Y coordinate for positioning controls (starts at top)
-    int y = 10;
-    
-    // ============================================
-    // Server Connection Section (top of window)
-    // ============================================
-    
-    // Label: "Server:"
-    CreateWindowW(L"STATIC",                    // Static text control
-        L"Server:",                             // Text to display
-        WS_CHILD | WS_VISIBLE,                  // Styles: child window, visible
-        10, y + 3,                              // X, Y position (offset Y by 3 for alignment)
-        60, 20,                                 // Width, Height
-        hwndParent,                             // Parent window
-        NULL,                                   // No menu/ID needed for static text
-        hInst,                                  // Instance handle
-        NULL);                                  // No creation data
-    
-    // Edit box: Server name input
-    state->hwndServer = CreateWindowW(L"EDIT",  // Edit control class
-        L"",                                    // Initial text (empty)
-        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,  // Styles
-        80, y,                                  // Position (to right of label)
-        300, 24,                                // Width, Height
-        hwndParent,                             // Parent
-        (HMENU)IDC_SERVER_EDIT,                // Control ID (for WM_COMMAND)
-        hInst,                                  // Instance
-        NULL);                                  // No creation data
-    
-    // Button: "Connect"
-    CreateWindowW(L"BUTTON",                    // Button control class
-        L"Connect",                             // Button text
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, // Styles: child, visible, push button
-        390, y,                                 // Position (to right of edit box)
-        80, 24,                                 // Width, Height
-        hwndParent,                             // Parent
-        (HMENU)IDC_CONNECT_BTN,                // Control ID
-        hInst,                                  // Instance
-        NULL);                                  // No creation data
-    
-    // Button: "Refresh"
-    CreateWindowW(L"BUTTON",
-        L"Refresh",
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        480, y,                                 // Position (to right of Connect button)
-        80, 24,
-        hwndParent,
-        (HMENU)IDC_REFRESH_BTN,
-        hInst,
-        NULL);
-    
-    // Move Y coordinate down for next row of controls
-    y += 35;
+    int y = 15;
     
     // ============================================
     // Search Section
     // ============================================
     
-    // Label: "Search:"
-    CreateWindowW(L"STATIC",
+    // Search label
+    HWND hwndSearchLabel = CreateWindowW(L"STATIC",
         L"Search:",
-        WS_CHILD | WS_VISIBLE,
-        10, y + 3,                              // Same X as Server label
+        WS_CHILD | WS_VISIBLE | SS_LEFT,
+        15, y + 3,
         60, 20,
-        hwndParent,
-        NULL,
-        hInst,
-        NULL);
+        hwndParent, NULL, hInst, NULL);
     
-    // Edit box: Search filter input
-    state->hwndSearch = CreateWindowW(L"EDIT",
+    // Set label font and color (larger)
+    HFONT hFont = CreateFontW(
+        19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+        L"Segoe UI"
+    );
+    SendMessage(hwndSearchLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
+    
+    // Search box (rounded, taller)
+    state->hwndSearch = CreateWindowExW(
+        0,
+        L"EDIT",
         L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
-        80, y,                                  // Same X as Server edit box
-        300, 24,
+        WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+        85, y - 2,
+        300, 32,
         hwndParent,
         (HMENU)IDC_SEARCH_EDIT,
-        hInst,
-        NULL);
+        hInst, NULL);
+    SendMessage(state->hwndSearch, WM_SETFONT, (WPARAM)hFont, TRUE);
+    SubclassEditForDarkMode(state->hwndSearch);
     
-    // Move Y coordinate down for ListView
-    y += 35;
+    // Refresh button (modern style, taller)
+    CreateModernButton(hwndParent, L"Refresh (F5)", 395, y - 2, 130, 32, IDC_REFRESH_BTN, hInst);
+    
+    y += 40;
     
     // ============================================
-    // ListView Section (main content area)
+    // ListView Section
     // ============================================
     
-    // Get client area dimensions to size ListView properly
     RECT rcClient;
     GetClientRect(hwndParent, &rcClient);
     
-    // Create ListView control (the main data display)
-    state->hwndListView = CreateWindowW(WC_LISTVIEW,  // ListView class name
-        L"",                                    // No text (ListView doesn't use it)
-        WS_CHILD | WS_VISIBLE | WS_BORDER |    // Basic styles
-        LVS_REPORT |                            // Report view (like a table)
-        LVS_SINGLESEL |                        // Only one item can be selected
-        LVS_SHOWSELALWAYS,                     // Keep selection visible
-        10, y,                                  // Position (left margin, below search)
-        rcClient.right - 20,                   // Width (full width minus margins)
-        rcClient.bottom - y - 80,              // Height (fill remaining space)
-        hwndParent,                             // Parent
-        (HMENU)IDC_LISTVIEW,                   // Control ID
-        hInst,                                  // Instance
-        NULL);                                  // No creation data
+    state->hwndListView = CreateWindowW(WC_LISTVIEW,
+        L"",
+        WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS,
+        15, y,
+        rcClient.right - 30,
+        rcClient.bottom - y - 90,
+        hwndParent,
+        (HMENU)IDC_LISTVIEW,
+        hInst, NULL);
+    
+    // Apply dark mode to ListView
+    SubclassListViewForDarkMode(state->hwndListView);
+    
+    // Set ListView font (larger)
+    HFONT hListFont = CreateFontW(
+        17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+        L"Segoe UI"
+    );
+    SendMessage(state->hwndListView, WM_SETFONT, (WPARAM)hListFont, TRUE);
     
     // Configure ListView columns
-    // Each column represents one piece of data (filename, path, user, etc.)
     LVCOLUMNW col = {0};
-    col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;  // We're setting text, width, and format
-    col.fmt = LVCFMT_LEFT;                          // Left-align text
+    col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;
+    col.fmt = LVCFMT_LEFT;
     
-    // Column 0: File Name
-    col.cx = 180;                                   // Column width in pixels
-    col.pszText = L"File Name";                    // Column header text
+    col.cx = 200;
+    col.pszText = L"File Name";
     ListView_InsertColumn(state->hwndListView, 0, &col);
     
-    // Column 1: Full Path
-    col.cx = 300;
+    col.cx = 350;
     col.pszText = L"Path";
     ListView_InsertColumn(state->hwndListView, 1, &col);
     
-    // Column 2: Username
     col.cx = 120;
     col.pszText = L"User";
     ListView_InsertColumn(state->hwndListView, 2, &col);
     
-    // Column 3: Server Name
-    col.cx = 100;
-    col.pszText = L"Server";
+    col.cx = 80;
+    col.pszText = L"Locks";
     ListView_InsertColumn(state->hwndListView, 3, &col);
     
-    // Column 4: Number of Locks
-    col.cx = 60;
-    col.pszText = L"Locks";
-    ListView_InsertColumn(state->hwndListView, 4, &col);
-    
-    // Set extended ListView styles for better appearance
     ListView_SetExtendedListViewStyle(state->hwndListView,
-        LVS_EX_FULLROWSELECT |    // Select entire row, not just first column
-        LVS_EX_GRIDLINES |        // Show grid lines between rows/columns
-        LVS_EX_DOUBLEBUFFER);      // Smooth scrolling (reduces flicker)
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES | LVS_EX_DOUBLEBUFFER);
     
     // ============================================
-    // Action Button Section (bottom)
+    // Action Buttons
     // ============================================
     
-    // Button: "Release Selected Lock"
-    CreateWindowW(L"BUTTON",
-        L"Release Selected Lock",
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-        rcClient.right - 180,                   // Position at right edge
-        rcClient.bottom - 60,                   // Position near bottom
-        160, 30,                                // Width, Height
-        hwndParent,
-        (HMENU)IDC_RELEASE_BTN,
-        hInst,
-        NULL);
+    // Position release button on the right side
+    int btnWidth = 220;
+    int btnX = rcClient.right - btnWidth - 15;
+    CreateModernButton(hwndParent, L"Release Selected Lock(s)", btnX, rcClient.bottom - 72, btnWidth, 36, IDC_RELEASE_BTN, hInst);
     
     // ============================================
-    // Status Bar (very bottom of window)
+    // Status Bar
     // ============================================
     
-    // Create status bar control
-    state->hwndStatus = CreateWindowW(STATUSCLASSNAME,  // Status bar class name
-        L"Ready",                               // Initial text
-        WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP, // Styles: child, visible, resize grip
-        0, 0,                                   // Position (status bar positions itself)
-        0, 0,                                   // Size (status bar sizes itself)
+    state->hwndStatus = CreateWindowExW(
+        0, STATUSCLASSNAMEW,
+        L"Ready",
+        WS_CHILD | WS_VISIBLE | SBARS_SIZEGRIP,
+        0, 0, 0, 0,
         hwndParent,
         (HMENU)IDC_STATUSBAR,
-        hInst,
-        NULL);
+        hInst, NULL);
+    
+    // Set status bar font (larger) and dark background
+    HFONT hStatusFont = CreateFontW(
+        17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+        L"Segoe UI"
+    );
+    SendMessage(state->hwndStatus, WM_SETFONT, (WPARAM)hStatusFont, TRUE);
+    SendMessage(state->hwndStatus, SB_SETBKCOLOR, 0, (LPARAM)COLOR_BG_DARKER);
 }
 
 /**
- * Update the ListView with current lock data (with filtering)
- * 
- * @param state - Pointer to application state
- * 
- * This function:
- * 1. Clears the ListView
- * 2. Reads the search filter text
- * 3. Iterates through all locks
- * 4. Filters based on search text (if any)
- * 5. Adds matching items to the ListView
- * 6. Updates the status bar with count information
+ * Update the ListView with current lock data
  */
 void UpdateListView(AppState* state) {
-    // Clear all existing items from the ListView
-    // This is faster than removing items one by one
+    if (!state || !state->hwndListView) return;
+    
     ListView_DeleteAllItems(state->hwndListView);
     
-    // Read the current search filter text from the search edit box
-    GetWindowTextW(state->hwndSearch, state->searchText, 256);
-    
-    // Counter for items actually displayed (after filtering)
-    int displayCount = 0;
-    
-    // Iterate through all locks in the array
-    for (size_t i = 0; i < state->locks.count; i++) {
-        // Get pointer to current lock
-        FileLockInfo* lock = &state->locks.items[i];
-        
-        // ============================================
-        // Apply search filter (if user entered search text)
-        // ============================================
-        if (state->searchText[0] != L'\0') {
-            // User has entered search text - filter results
-            // We'll do case-insensitive substring matching
-            
-            // Create lowercase copies for comparison
-            // (We don't modify originals, just create temp copies)
-            WCHAR searchLower[256];
-            WCHAR fileNameLower[256];
-            WCHAR pathLower[256];
-            WCHAR userLower[256];
-            
-            // Copy strings to temp buffers
-            wcsncpy(searchLower, state->searchText, 255);
-            searchLower[255] = L'\0';
-            wcsncpy(fileNameLower, lock->fileName, 255);
-            fileNameLower[255] = L'\0';
-            wcsncpy(pathLower, lock->filePath, 255);
-            pathLower[255] = L'\0';
-            wcsncpy(userLower, lock->username, 255);
-            userLower[255] = L'\0';
-            
-            // Convert to lowercase for case-insensitive comparison
-            _wcslwr(searchLower);      // Convert search text to lowercase
-            _wcslwr(fileNameLower);    // Convert filename to lowercase
-            _wcslwr(pathLower);        // Convert path to lowercase
-            _wcslwr(userLower);        // Convert username to lowercase
-            
-            // Check if search text appears in filename, path, or username
-            // If it doesn't match any of these, skip this item
-            if (!wcsstr(fileNameLower, searchLower) &&
-                !wcsstr(pathLower, searchLower) &&
-                !wcsstr(userLower, searchLower)) {
-                continue;  // Skip this item - doesn't match filter
-            }
-        }
-        // If no search text, show all items
-        
-        // ============================================
-        // Add item to ListView
-        // ============================================
-        
-        // Prepare ListView item structure
-        LVITEMW item = {0};
-        item.mask = LVIF_TEXT | LVIF_PARAM;     // We're setting text and lParam
-        item.iItem = displayCount;               // Row index (0-based)
-        item.lParam = i;                        // Store array index in lParam
-                                                 // (We'll use this to get the lock data later)
-        
-        // Column 0: File Name
-        // This is the primary column - set it when inserting the item
-        item.pszText = lock->fileName;          // Text to display
-        ListView_InsertItem(state->hwndListView, &item);
-        
-        // Column 1: Full Path
-        // Set text for additional columns after item is inserted
-        ListView_SetItemText(state->hwndListView, displayCount, 1, lock->filePath);
-        
-        // Column 2: Username
-        ListView_SetItemText(state->hwndListView, displayCount, 2, lock->username);
-        
-        // Column 3: Server Name
-        ListView_SetItemText(state->hwndListView, displayCount, 3, lock->serverName);
-        
-        // Column 4: Number of Locks (convert number to string)
-        WCHAR lockCount[32];
-        swprintf(lockCount, 32, L"%u", lock->numLocks);
-        ListView_SetItemText(state->hwndListView, displayCount, 4, lockCount);
-        
-        // Increment display counter (only items that pass filter are counted)
-        displayCount++;
+    WCHAR searchText[256] = L"";
+    if (state->hwndSearch) {
+        GetWindowTextW(state->hwndSearch, searchText, 256);
+        _wcslwr(searchText);
     }
     
-    // ============================================
-    // Update status bar with count information
-    // ============================================
-    WCHAR statusText[512];
-    swprintf(statusText, 512, 
-        L"Showing %d of %d files",              // Format: "Showing X of Y files"
-        displayCount,                           // Number displayed (after filter)
-        (int)state->locks.count);               // Total number available
+    BOOL hasFilter = (wcslen(searchText) > 0);
+    
+    for (DWORD i = 0; i < state->locks.count; i++) {
+        FileLockInfo* lock = &state->locks.items[i];
+        
+        // Apply search filter
+        if (hasFilter) {
+            WCHAR lowerFilename[512], lowerPath[512], lowerUsername[256];
+            wcsncpy(lowerFilename, lock->fileName, 256);
+            wcsncpy(lowerPath, lock->filePath, MAX_PATH);
+            wcsncpy(lowerUsername, lock->username, 256);
+            _wcslwr(lowerFilename);
+            _wcslwr(lowerPath);
+            _wcslwr(lowerUsername);
+            
+            if (!wcsstr(lowerFilename, searchText) &&
+                !wcsstr(lowerPath, searchText) &&
+                !wcsstr(lowerUsername, searchText)) {
+                continue;
+            }
+        }
+        
+        LVITEMW item = {0};
+        item.mask = LVIF_TEXT | LVIF_PARAM;
+        item.iItem = ListView_GetItemCount(state->hwndListView);
+        item.lParam = (LPARAM)lock->fileId;
+        item.pszText = lock->fileName;
+        int index = ListView_InsertItem(state->hwndListView, &item);
+        
+        ListView_SetItemText(state->hwndListView, index, 1, lock->filePath);
+        ListView_SetItemText(state->hwndListView, index, 2, lock->username);
+        
+        WCHAR lockCount[16];
+        swprintf(lockCount, 16, L"%lu", lock->numLocks);
+        ListView_SetItemText(state->hwndListView, index, 3, lockCount);
+    }
+    
+    WCHAR statusText[256];
+    swprintf(statusText, 256, L"Showing %d file(s)", ListView_GetItemCount(state->hwndListView));
     SetWindowTextW(state->hwndStatus, statusText);
 }
 
 /**
- * Main Window Procedure - Handles all messages for the main window
- * 
- * @param hwnd   - Handle to the window receiving the message
- * @param msg    - Message identifier (WM_CREATE, WM_COMMAND, etc.)
- * @param wParam - Additional message-specific information
- * @param lParam - Additional message-specific information
- * @return Result code (0 = handled, non-zero = pass to DefWindowProc)
- * 
- * This function is called by Windows whenever a message needs to be processed
- * for our main window. It's the central message dispatcher for the application.
+ * Handle "Refresh" button click
+ */
+void OnRefresh(HWND hwnd, AppState* state) {
+    if (!state) return;
+    
+    SetWindowTextW(state->hwndStatus, L"Refreshing...");
+    
+    LockArray_Clear(&state->locks);
+    
+    // Always enumerate local machine (NULL server name)
+    DWORD result = EnumerateOpenFiles(NULL, &state->locks);
+    
+    if (result == 0) {
+        UpdateListView(state);
+        WCHAR statusText[256];
+        swprintf(statusText, 256, L"Found %lu open file(s)", state->locks.count);
+        SetWindowTextW(state->hwndStatus, statusText);
+    } else {
+        WCHAR errorMsg[512];
+        swprintf(errorMsg, 512, L"Failed to enumerate files. Error code: %lu\nMake sure you're running as Administrator.", result);
+        MessageBoxW(hwnd, errorMsg, L"Error", MB_ICONERROR);
+        SetWindowTextW(state->hwndStatus, L"Error refreshing file list");
+    }
+}
+
+/**
+ * Handle "Release Lock" button click - supports multiple selections
+ */
+void OnReleaseLock(HWND hwnd, AppState* state) {
+    if (!state || !state->hwndListView) return;
+    
+    // Count selected items
+    int selectedCount = ListView_GetSelectedCount(state->hwndListView);
+    if (selectedCount == 0) {
+        MessageBoxW(hwnd, L"Please select one or more files to release.", L"No Selection", MB_ICONINFORMATION);
+        return;
+    }
+    
+    // Build confirmation message
+    WCHAR confirmMsg[768];
+    if (selectedCount == 1) {
+        int selectedIndex = ListView_GetNextItem(state->hwndListView, -1, LVNI_SELECTED);
+        WCHAR filename[512];
+        ListView_GetItemText(state->hwndListView, selectedIndex, 0, filename, 512);
+        swprintf(confirmMsg, 768, 
+            L"Are you sure you want to release the lock on:\n\n%s\n\nWarning: This may cause unsaved data loss!", 
+            filename);
+    } else {
+        swprintf(confirmMsg, 768, 
+            L"Are you sure you want to release locks on %d selected files?\n\nWarning: This may cause unsaved data loss!", 
+            selectedCount);
+    }
+    
+    int response = MessageBoxW(hwnd, confirmMsg, L"Confirm Release", MB_YESNO | MB_ICONWARNING);
+    
+    if (response == IDYES) {
+        WCHAR statusMsg[256];
+        swprintf(statusMsg, 256, L"Releasing %d lock(s)...", selectedCount);
+        SetWindowTextW(state->hwndStatus, statusMsg);
+        
+        int successCount = 0;
+        int failCount = 0;
+        int itemIndex = -1;
+        
+        // Iterate through all selected items
+        while ((itemIndex = ListView_GetNextItem(state->hwndListView, itemIndex, LVNI_SELECTED)) != -1) {
+            LVITEMW item = {0};
+            item.mask = LVIF_PARAM;
+            item.iItem = itemIndex;
+            ListView_GetItem(state->hwndListView, &item);
+            DWORD fileId = (DWORD)item.lParam;
+            
+            DWORD result = CloseFileLock(NULL, fileId);
+            
+            if (result == 0) {
+                successCount++;
+            } else {
+                failCount++;
+            }
+        }
+        
+        // Show results
+        WCHAR resultMsg[512];
+        if (failCount == 0) {
+            swprintf(resultMsg, 512, L"Successfully released %d lock(s)!", successCount);
+            MessageBoxW(hwnd, resultMsg, L"Success", MB_ICONINFORMATION);
+        } else {
+            swprintf(resultMsg, 512, L"Released %d lock(s).\nFailed to release %d lock(s).", successCount, failCount);
+            MessageBoxW(hwnd, resultMsg, L"Partial Success", MB_ICONWARNING);
+        }
+        
+        OnRefresh(hwnd, state);
+    }
+}
+
+/**
+ * Handle search text box change
+ */
+void OnSearchChanged(HWND hwnd, AppState* state) {
+    UpdateListView(state);
+}
+
+/**
+ * Main window procedure
  */
 LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    // Retrieve application state from window's user data
-    // We store a pointer to AppState here so we can access it in any message handler
-    AppState* state = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    static AppState* state = NULL;
     
-    // Process different message types
     switch (msg) {
-        // ============================================
-        // WM_CREATE - Window is being created
-        // ============================================
         case WM_CREATE: {
-            // Allocate memory for application state structure
-            // calloc() zeros the memory, so all fields start at 0/NULL
-            state = (AppState*)calloc(1, sizeof(AppState));
+            state = (AppState*)malloc(sizeof(AppState));
             if (!state) {
-                // Memory allocation failed - abort window creation
+                MessageBoxW(hwnd, L"Failed to allocate memory for AppState", L"Error", MB_ICONERROR);
                 return -1;
             }
             
-            // Store window handle in state for easy access
-            state->hwndMain = hwnd;
-            
-            // Initialize the lock array (allocates initial memory)
+            memset(state, 0, sizeof(AppState));
             LockArray_Init(&state->locks);
+            state->hwndServer = NULL;  // No server field anymore
             
-            // Create all child controls (buttons, edit boxes, ListView, etc.)
-            CreateControls(hwnd, state);
-            
-            // Store state pointer in window's user data
-            // This allows us to retrieve it in other message handlers
             SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)state);
             
-            return 0;  // Window creation successful
+            CreateControls(hwnd, state);
+            
+            // Auto-refresh on startup
+            PostMessage(hwnd, WM_COMMAND, MAKEWPARAM(IDC_REFRESH_BTN, BN_CLICKED), 0);
+            
+            return 0;
         }
         
-        // ============================================
-        // WM_COMMAND - Button clicks, menu selections, etc.
-        // ============================================
+        case WM_SIZE: {
+            if (state && state->hwndStatus) {
+                SendMessage(state->hwndStatus, WM_SIZE, 0, 0);
+                
+                RECT rcClient;
+                GetClientRect(hwnd, &rcClient);
+                
+                if (state->hwndListView) {
+                    SetWindowPos(state->hwndListView, NULL,
+                        15, 58,
+                        rcClient.right - 30,
+                        rcClient.bottom - 140,
+                        SWP_NOZORDER);
+                }
+                
+                HWND hwndReleaseBtn = GetDlgItem(hwnd, IDC_RELEASE_BTN);
+                if (hwndReleaseBtn) {
+                    int btnWidth = 220;
+                    int btnX = rcClient.right - btnWidth - 15;
+                    SetWindowPos(hwndReleaseBtn, NULL,
+                        btnX, rcClient.bottom - 72,
+                        btnWidth, 36,
+                        SWP_NOZORDER);
+                }
+            }
+            return 0;
+        }
+        
+        case WM_CTLCOLORSTATIC: {
+            HDC hdcStatic = (HDC)wParam;
+            SetTextColor(hdcStatic, COLOR_TEXT_PRIMARY);
+            SetBkColor(hdcStatic, COLOR_BG_DARK);
+            return (LRESULT)CreateSolidBrush(COLOR_BG_DARK);
+        }
+        
+        case WM_DRAWITEM: {
+            LPDRAWITEMSTRUCT lpDrawItem = (LPDRAWITEMSTRUCT)lParam;
+            if (lpDrawItem->CtlType == ODT_BUTTON) {
+                DrawModernButton(lpDrawItem);
+                return TRUE;
+            }
+            return FALSE;
+        }
+        
         case WM_COMMAND: {
-            // Safety check: retrieve state if not already available
-            // (Shouldn't happen, but protects against edge cases)
-            if (!state) {
-                state = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-            }
-            if (!state) {
-                // No state available - pass to default handler
-                return DefWindowProc(hwnd, msg, wParam, lParam);
-            }
+            int controlId = LOWORD(wParam);
+            int notifyCode = HIWORD(wParam);
             
-            // Extract control ID and notification code from wParam
-            int wmId = LOWORD(wParam);      // Control ID (which button/control)
-            int wmEvent = HIWORD(wParam);   // Notification code (click, change, etc.)
-            
-            // Route to appropriate handler based on control ID
-            switch (wmId) {
-                case IDC_CONNECT_BTN:
-                    // "Connect" button was clicked
-                    OnConnect(hwnd, state);
-                    break;
-                    
+            switch (controlId) {
                 case IDC_REFRESH_BTN:
-                    // "Refresh" button was clicked
-                    OnRefresh(hwnd, state);
-                    break;
-                    
-                case IDC_RELEASE_BTN:
-                    // "Release Selected Lock" button was clicked
-                    OnReleaseLock(hwnd, state);
-                    break;
-                    
-                case IDC_SEARCH_EDIT:
-                    // Search edit box notification
-                    if (wmEvent == EN_CHANGE) {
-                        // Text in search box changed - update filter
-                        OnSearchChanged(hwnd, state);
+                    if (notifyCode == BN_CLICKED) {
+                        OnRefresh(hwnd, state);
                     }
                     break;
                     
-                // Add more control handlers here as needed
+                case IDC_RELEASE_BTN:
+                    if (notifyCode == BN_CLICKED) {
+                        OnReleaseLock(hwnd, state);
+                    }
+                    break;
+                    
+                case IDC_SEARCH_EDIT:
+                    if (notifyCode == EN_CHANGE) {
+                        OnSearchChanged(hwnd, state);
+                    }
+                    break;
             }
-            return 0;  // Message handled
-        }
-        
-        // ============================================
-        // WM_SIZE - Window is being resized
-        // ============================================
-        case WM_SIZE: {
-            // Window size changed - resize child controls to fit
-            if (state) {
-                // Status bar automatically resizes itself when it receives WM_SIZE
-                SendMessage(state->hwndStatus, WM_SIZE, 0, 0);
-                
-                // TODO: Resize ListView and buttons to fit new window size
-                // This would involve:
-                // 1. Get new client area size
-                // 2. Calculate new positions/sizes for controls
-                // 3. Call SetWindowPos() for each control
-            }
+            
             return 0;
         }
         
-        // ============================================
-        // WM_NOTIFY - Notification messages from controls
-        // ============================================
         case WM_NOTIFY: {
-            // Retrieve state if needed
-            if (!state) {
-                state = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-            }
-            if (!state) {
-                return DefWindowProc(hwnd, msg, wParam, lParam);
-            }
-            
-            // Get notification header (contains control ID and notification code)
-            LPNMHDR pnmhdr = (LPNMHDR)lParam;
-            
-            // Check which control sent the notification
-            if (pnmhdr->idFrom == IDC_LISTVIEW) {
-                // ListView sent a notification
-                if (pnmhdr->code == NM_DBLCLK) {
-                    // User double-clicked on a ListView item
-                    // Treat this as "release lock" action
-                    OnReleaseLock(hwnd, state);
-                }
-                // Could handle other ListView notifications here:
-                // - NM_CLICK: single click
-                // - LVN_ITEMCHANGED: selection changed
-                // - etc.
+            LPNMHDR pnmh = (LPNMHDR)lParam;
+            if (pnmh->idFrom == IDC_LISTVIEW && pnmh->code == NM_DBLCLK) {
+                OnReleaseLock(hwnd, state);
             }
             return 0;
         }
         
-        // ============================================
-        // WM_DESTROY - Window is being destroyed
-        // ============================================
-        case WM_DESTROY: {
-            // Cleanup: free all allocated memory
-            if (state) {
-                // Free the lock array memory
-                LockArray_Free(&state->locks);
-                
-                // Free the application state structure
-                free(state);
-                
-                // Clear the pointer in window data (prevent use-after-free)
-                SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+        case WM_KEYDOWN: {
+            if (wParam == VK_F5) {
+                OnRefresh(hwnd, state);
             }
-            
-            // Post quit message to exit the message loop
-            // The wParam (0) becomes the exit code
+            return 0;
+        }
+        
+        case WM_DESTROY: {
+            if (state) {
+                LockArray_Free(&state->locks);
+                free(state);
+            }
             PostQuitMessage(0);
             return 0;
         }
         
-        // ============================================
-        // Default: Let Windows handle unhandled messages
-        // ============================================
         default:
-            // Pass unhandled messages to default window procedure
-            // This handles standard Windows behavior (resizing, painting, etc.)
             return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 }
-

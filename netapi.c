@@ -5,25 +5,19 @@
  * for enumerating and closing file locks on remote servers.
  */
 
- #include <windows.h>    // Windows API definitions
- #include <lm.h>          // LAN Manager API (NetFileEnum, NetFileClose)
- #include <stdio.h>       // Standard I/O (for swprintf)
- #include "lockinfo.h"      // Our data structures
- 
- // Link against netapi32.lib (required for NetFileEnum, NetFileClose)
- #pragma comment(lib, "netapi32.lib")
- 
- /**
-  * Enumerate all open files on a server
-  * 
-  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01" or NULL for local)
-  * @param outArray   - Pointer to LockArray to populate with results
-  * @return TRUE if successful, FALSE on error (error message shown to user)
-  * 
-  * This function queries the server for all currently open files and populates
-  * the output array with FileLockInfo structures containing details about each lock.
-  */
- BOOL EnumerateOpenFiles(const WCHAR* serverName, LockArray* outArray) {
+#include <windows.h>
+#include <lm.h>
+#include <stdio.h>
+#include "lockinfo.h"
+
+/**
+ * Enumerate all open files on a server
+ * 
+ * @param serverName - UNC path to server (e.g., L"\\\\SERVER01" or NULL for local)
+ * @param outArray   - Pointer to LockArray to populate with results
+ * @return DWORD - 0 on success, error code on failure
+ */
+DWORD EnumerateOpenFiles(WCHAR* serverName, LockArray* outArray) {
      PFILE_INFO_3 pFileInfo = NULL;      // Buffer returned by NetFileEnum
      DWORD dwEntriesRead = 0;            // Number of entries actually read
      DWORD dwTotalEntries = 0;          // Total entries available (may be more)
@@ -50,32 +44,8 @@
      
      // Check if the API call succeeded
      if (nStatus != NERR_Success) {
-         // Handle common error conditions with user-friendly messages
-         switch (nStatus) {
-             case ERROR_ACCESS_DENIED:
-                 // Most common error - user needs admin rights
-                 MessageBoxW(NULL, 
-                     L"Access denied. Run as administrator and ensure you have rights on the target server.",
-                     L"Connection Error", MB_ICONERROR);
-                 break;
-                 
-             case ERROR_BAD_NETPATH:
-                 // Server name incorrect or network unreachable
-                 MessageBoxW(NULL, 
-                     L"Server not found. Check the server name and network connectivity.",
-                     L"Connection Error", MB_ICONERROR);
-                 break;
-                 
-             default:
-                 // Unknown error - show error code for debugging
-                 {
-                     WCHAR errMsg[512];
-                     swprintf(errMsg, 512, L"NetFileEnum failed with error code: %d", nStatus);
-                     MessageBoxW(NULL, errMsg, L"Error", MB_ICONERROR);
-                 }
-                 break;
-         }
-         return FALSE;  // Indicate failure
+         // Return error code to caller
+         return nStatus;
      }
      
      // Process each file entry returned by the API
@@ -142,53 +112,34 @@
      // Always use NetApiBufferFree, never free() or delete
      if (pFileInfo != NULL) {
          NetApiBufferFree(pFileInfo);
-         pFileInfo = NULL;  // Prevent double-free
      }
      
-     return TRUE;  // Success
- }
+     return 0;  // Success (0 = no error)
+}
  
- /**
-  * Close a specific file lock by file ID
-  * 
-  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
-  * @param fileId     - File ID returned by NetFileEnum (fi3_id)
-  * @return TRUE if successful, FALSE on error (error message shown to user)
-  * 
-  * This function closes a file handle on the remote server, effectively
-  * releasing the lock. Requires administrator privileges.
-  */
- BOOL CloseFileLock(const WCHAR* serverName, DWORD fileId) {
+/**
+ * Close a specific file lock by file ID
+ * 
+ * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
+ * @param fileId     - File ID returned by NetFileEnum (fi3_id)
+ * @return DWORD - 0 on success, error code on failure
+ */
+DWORD CloseFileLock(WCHAR* serverName, DWORD fileId) {
      NET_API_STATUS nStatus;
      
      // Call NetFileClose to close the file handle
-     // This will release the lock and allow other users to access the file
      nStatus = NetFileClose(serverName, fileId);
      
-     // Check if the operation succeeded
-     if (nStatus != NERR_Success) {
-         // Show error message to user
-         WCHAR errMsg[512];
-         swprintf(errMsg, 512, 
-             L"Failed to close file.\nError code: %d\n\nMake sure you have administrator rights.",
-             nStatus);
-         MessageBoxW(NULL, errMsg, L"Error", MB_ICONERROR);
-         return FALSE;
-     }
-     
-     return TRUE;  // Success
- }
+     return nStatus;  // Return status code (0 = success)
+}
  
- /**
-  * Test if we can successfully connect to a server
-  * 
-  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
-  * @return TRUE if connection successful, FALSE otherwise
-  * 
-  * This is a lightweight test that attempts to enumerate files.
-  * Even if 0 files are returned, a successful return means we can connect.
-  */
- BOOL TestServerConnection(const WCHAR* serverName) {
+/**
+ * Test if we can successfully connect to a server
+ * 
+ * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
+ * @return BOOL - TRUE if connection successful, FALSE otherwise
+ */
+BOOL TestServerConnection(WCHAR* serverName) {
      PFILE_INFO_3 pFileInfo = NULL;
      DWORD dwEntriesRead = 0;
      DWORD dwTotalEntries = 0;

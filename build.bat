@@ -12,6 +12,7 @@ goto build
 :clean
 echo Cleaning build artifacts...
 if exist *.o del /Q *.o
+if exist *.res del /Q *.res
 if exist HandleHunter.exe del /Q HandleHunter.exe
 echo Clean complete.
 goto end
@@ -24,12 +25,21 @@ echo.
 
 REM Configuration
 set CC=gcc
+set WINDRES=windres
 set CFLAGS=-O2 -Wall -DUNICODE -D_UNICODE
-set LDFLAGS=-mwindows -lnetapi32 -lcomctl32 -s
+set LDFLAGS=-mwindows -lnetapi32 -lcomctl32 -ldwmapi -luxtheme -s
 set TARGET=HandleHunter.exe
 
+REM Compile resource file (includes manifest)
+echo [1/6] Compiling resources...
+%WINDRES% HandleHunter.rc -O coff -o HandleHunter.res
+if errorlevel 1 (
+    echo ERROR: Failed to compile resources
+    goto error
+)
+
 REM Compile main.c
-echo [1/4] Compiling main.c...
+echo [2/6] Compiling main.c...
 %CC% %CFLAGS% -c main.c -o main.o
 if errorlevel 1 (
     echo ERROR: Failed to compile main.c
@@ -37,7 +47,7 @@ if errorlevel 1 (
 )
 
 REM Compile gui.c
-echo [2/4] Compiling gui.c...
+echo [3/6] Compiling gui.c...
 %CC% %CFLAGS% -c gui.c -o gui.o
 if errorlevel 1 (
     echo ERROR: Failed to compile gui.c
@@ -45,7 +55,7 @@ if errorlevel 1 (
 )
 
 REM Compile netapi.c
-echo [3/4] Compiling netapi.c...
+echo [4/6] Compiling netapi.c...
 %CC% %CFLAGS% -c netapi.c -o netapi.o
 if errorlevel 1 (
     echo ERROR: Failed to compile netapi.c
@@ -53,36 +63,27 @@ if errorlevel 1 (
 )
 
 REM Compile lockinfo.c
-echo [4/4] Compiling lockinfo.c...
+echo [5/6] Compiling lockinfo.c...
 %CC% %CFLAGS% -c lockinfo.c -o lockinfo.o
 if errorlevel 1 (
     echo ERROR: Failed to compile lockinfo.c
     goto error
 )
 
-REM Link
-echo Linking %TARGET%...
-%CC% main.o gui.o netapi.o lockinfo.o -o %TARGET% %LDFLAGS%
+REM Compile modern_ui.c
+echo [6/6] Compiling modern_ui.c...
+%CC% %CFLAGS% -c modern_ui.c -o modern_ui.o
 if errorlevel 1 (
-    echo ERROR: Failed to link %TARGET%
+    echo ERROR: Failed to compile modern_ui.c
     goto error
 )
 
-REM Embed manifest (optional)
-if exist manifest.xml (
-    where mt.exe >nul 2>&1
-    if not errorlevel 1 (
-        echo Embedding manifest...
-        mt.exe -nologo -manifest manifest.xml -outputresource:%TARGET%;1 2>nul
-        if errorlevel 1 (
-            echo WARNING: Failed to embed manifest
-        ) else (
-            echo Manifest embedded successfully
-        )
-    ) else (
-        echo NOTE: mt.exe not found - manifest not embedded
-        echo The app will still work, but UAC prompt may not appear
-    )
+REM Link with resource file
+echo Linking %TARGET%...
+%CC% main.o gui.o netapi.o lockinfo.o modern_ui.o HandleHunter.res -o %TARGET% %LDFLAGS%
+if errorlevel 1 (
+    echo ERROR: Failed to link %TARGET%
+    goto error
 )
 
 echo.
@@ -93,8 +94,6 @@ if exist %TARGET% (
     echo Output: %TARGET%
     dir %TARGET% | find ".exe"
 )
-echo.
-echo Run as Administrator to use the program.
 echo.
 goto end
 
