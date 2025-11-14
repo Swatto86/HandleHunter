@@ -117,7 +117,7 @@ void CreateControls(HWND hwndParent, AppState* state) {
     
     state->hwndListView = CreateWindowW(WC_LISTVIEW,
         L"",
-        WS_CHILD | WS_VISIBLE | WS_BORDER | LVS_REPORT | LVS_SHOWSELALWAYS,
+        WS_CHILD | WS_VISIBLE | WS_BORDER | WS_TABSTOP | LVS_REPORT | LVS_SHOWSELALWAYS,
         15, y,
         rcClient.right - 30,
         rcClient.bottom - y - 90,
@@ -418,7 +418,8 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             
             switch (controlId) {
                 case IDC_REFRESH_BTN:
-                    if (notifyCode == BN_CLICKED) {
+                    // Handle both button clicks (BN_CLICKED=0) and accelerator commands (notifyCode=1)
+                    if (notifyCode == BN_CLICKED || notifyCode == 1) {
                         OnRefresh(hwnd, state);
                     }
                     break;
