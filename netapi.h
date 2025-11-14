@@ -21,35 +21,35 @@
  * 
  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01" or NULL for local)
  * @param outArray   - Pointer to LockArray to populate with results
- * @return TRUE if successful, FALSE on error (error message shown to user)
+ * @return DWORD - 0 on success, error code on failure
  * 
  * This function queries the server for all currently open files and populates
  * the output array with FileLockInfo structures.
  */
-BOOL EnumerateOpenFiles(const WCHAR* serverName, LockArray* outArray);
+DWORD EnumerateOpenFiles(WCHAR* serverName, LockArray* outArray);
 
 /**
  * Close a specific file lock by file ID
  * 
  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
  * @param fileId     - File ID returned by NetFileEnum (fi3_id)
- * @return TRUE if successful, FALSE on error (error message shown to user)
+ * @return DWORD - 0 on success, error code on failure
  * 
  * This function closes a file handle on the remote server, effectively
  * releasing the lock. Requires administrator privileges.
  */
-BOOL CloseFileLock(const WCHAR* serverName, DWORD fileId);
+DWORD CloseFileLock(WCHAR* serverName, DWORD fileId);
 
 /**
  * Test if we can successfully connect to a server
  * 
  * @param serverName - UNC path to server (e.g., L"\\\\SERVER01")
- * @return TRUE if connection successful, FALSE otherwise
+ * @return BOOL - TRUE if connection successful, FALSE otherwise
  * 
  * This is a lightweight test that attempts to enumerate files.
  * Even if 0 files are returned, a successful return means we can connect.
  */
-BOOL TestServerConnection(const WCHAR* serverName);
+BOOL TestServerConnection(WCHAR* serverName);
 
 #endif // NETAPI_H
 

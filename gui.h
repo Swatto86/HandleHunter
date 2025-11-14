@@ -50,13 +50,6 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 // ============================================
 
 /**
- * Handle "Connect" button click
- * @param hwnd  - Window handle
- * @param state - Application state
- */
-void OnConnect(HWND hwnd, AppState* state);
-
-/**
  * Handle "Refresh" button click
  * @param hwnd  - Window handle
  * @param state - Application state

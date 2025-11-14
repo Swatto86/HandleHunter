@@ -1,116 +1,49 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!--
-    manifest.xml - Application Manifest
-    ====================================
-    
-    This manifest file tells Windows how to run HandleHunter:
-    - Request administrator privileges (required for NetFileEnum/NetFileClose)
-    - Enable high DPI awareness (crisp text on high-resolution displays)
-    - Declare Windows version compatibility
-    - Request modern themed controls (Windows XP+ visual styles)
-    
-    This file must be embedded into the executable using mt.exe or windres.
--->
-
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  
-  <!-- Application Identity -->
-  <!-- This identifies the application to Windows -->
   <assemblyIdentity
-    version="1.0.0.0"              <!-- Application version (major.minor.build.revision) -->
-    processorArchitecture="*"       <!-- "*" = works on all architectures (x86, x64, ARM) -->
-    name="HandleHunter"            <!-- Application name (used internally by Windows) -->
-    type="win32"/>                <!-- Application type (win32 = Windows executable) -->
+    version="1.0.0.0"
+    processorArchitecture="*"
+    name="HandleHunter"
+    type="win32"/>
+  <description>HandleHunter - File Lock Manager</description>
   
-  <!-- Application Description -->
-  <!-- Shown in UAC prompt and file properties -->
-  <description>HandleHunter - File Lock Manager for Windows File Servers</description>
-  
-  <!-- ============================================
-       UAC Elevation (Administrator Privileges)
-       ============================================ -->
-  <!--
-      This section tells Windows to prompt for administrator elevation.
-      Without this, NetFileEnum and NetFileClose will fail with access denied.
-      
-      requireAdministrator = Always prompt for admin (what we need)
-      asInvoker = Run with user's current privileges (not enough)
-      highestAvailable = Prompt only if user isn't already admin (confusing)
-  -->
+  <!-- Request administrator privileges -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>
       <requestedPrivileges>
-        <!-- requireAdministrator = Always prompt for admin (required for NetFileEnum/NetFileClose) -->
-        <!-- uiAccess="false" = We don't need to interact with other windows -->
         <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>
       </requestedPrivileges>
     </security>
   </trustInfo>
   
-  <!-- ============================================
-       High DPI Awareness
-       ============================================ -->
-  <!--
-      This tells Windows that HandleHunter handles DPI scaling itself.
-      Without this, Windows will scale the UI (making it blurry on high-DPI displays).
-      
-      PerMonitorV2 = Best DPI awareness mode (Windows 10 1703+)
-      - Each monitor can have different DPI
-      - Automatic scaling for child windows
-      - Crisp text on all displays
-  -->
+  <!-- DPI Awareness -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
-      <!-- Legacy DPI awareness (for Windows 7/8) -->
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
-      <!-- Modern DPI awareness (Windows 10+) -->
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true</dpiAware>
       <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
     </windowsSettings>
   </application>
   
-  <!-- ============================================
-       Windows Version Compatibility
-       ============================================ -->
-  <!--
-      Declares which Windows versions HandleHunter supports.
-      This prevents Windows from enabling compatibility modes unnecessarily.
-      
-      GUIDs identify specific Windows versions:
-      - Windows 10: {8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}
-      - Windows 7:  {35138b9a-5d96-4fbd-8e2d-a2440225f93a}
-      - Windows 8:  {4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}
-      - Windows 8.1: {1f676c76-80e1-4239-95bb-83d0f6d0da78}
-  -->
+  <!-- Windows version compatibility -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>
-      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/> <!-- Windows 10 -->
-      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/> <!-- Windows 7 -->
-      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/> <!-- Windows 8 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/> <!-- Windows 10/11 -->
       <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/> <!-- Windows 8.1 -->
+      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/> <!-- Windows 8 -->
+      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/> <!-- Windows 7 -->
     </application>
   </compatibility>
   
-  <!-- ============================================
-       Modern Visual Styles (Themed Controls)
-       ============================================ -->
-  <!--
-      This requests version 6.0 of the Common Controls library.
-      Version 6.0 provides modern themed controls (Windows XP+ style).
-      Without this, controls look like Windows 95 (ugly!).
-      
-      The publicKeyToken and other attributes are Microsoft's official
-      values for the Common Controls library.
-  -->
+  <!-- Enable modern visual styles (Common Controls v6) -->
   <dependency>
     <dependentAssembly>
       <assemblyIdentity
         type="win32"
         name="Microsoft.Windows.Common-Controls"
-        version="6.0.0.0"                     <!-- Version 6.0 = modern themed controls -->
-        processorArchitecture="*"              <!-- Works on all architectures -->
-        publicKeyToken="6595b64144ccf1df"     <!-- Microsoft's public key token -->
-        language="*"/>                        <!-- All languages -->
+        version="6.0.0.0"
+        processorArchitecture="*"
+        publicKeyToken="6595b64144ccf1df"
+        language="*"/>
     </dependentAssembly>
   </dependency>
 </assembly>
-
