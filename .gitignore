@@ -1,0 +1,15 @@
+# Build artifacts
+*.o
+*.exe
+*.res
+
+# IDE and editor files
+*.swp
+*.swo
+*~
+.vscode/
+.vs/
+
+# OS-specific files
+Thumbs.db
+.DS_Store
