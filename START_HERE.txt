@@ -1,0 +1,129 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║                       HandleHunter                             ║
+║                  File Lock Manager for Windows                 ║
+║                                                                ║
+║             All files extracted and ready to build!            ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+
+QUICK START (3 steps):
+======================
+
+1. Verify files:     verify_files.bat
+2. Test GCC:         test_gcc.bat
+3. Build:            build.bat
+
+
+DETAILED INSTRUCTIONS:
+======================
+
+See: BUILD_INSTRUCTIONS.txt
+
+
+WHAT'S IN THIS FOLDER:
+======================
+
+Source Code Files:
+  ✓ main.c          - Entry point and event handlers
+  ✓ gui.c           - GUI creation and window management
+  ✓ gui.h           - GUI function declarations
+  ✓ netapi.c        - Windows NetAPI wrappers
+  ✓ netapi.h        - NetAPI function declarations
+  ✓ lockinfo.c      - Dynamic array implementation
+  ✓ lockinfo.h      - Data structures
+  ✓ resource.h      - Control IDs
+
+Configuration Files:
+  ✓ manifest.xml    - UAC elevation manifest
+
+Build Scripts:
+  ✓ build.bat       - Main build script
+  ✓ test_gcc.bat    - Test if GCC is available
+  ✓ verify_files.bat - Verify all files are present
+
+Documentation:
+  ✓ README.md                - General documentation
+  ✓ BUILD_INSTRUCTIONS.txt   - Detailed build guide
+  ✓ PROJECT_STATUS.txt       - Project overview
+  ✓ START_HERE.txt          - This file
+
+
+IMPORTANT NOTES:
+================
+
+⚠ Use Command Prompt (cmd.exe), NOT PowerShell for building!
+⚠ HandleHunter MUST be run as Administrator!
+⚠ Requires MinGW-w64 (GCC compiler) to build
+
+
+IF BUILD FAILS:
+===============
+
+1. Make sure GCC is installed:
+   winget install mingw-w64
+
+2. Make sure you're in Command Prompt (cmd.exe), not PowerShell
+
+3. Try cleaning first:
+   build.bat clean
+   build.bat
+
+4. If all else fails, see BUILD_INSTRUCTIONS.txt for manual build
+
+
+BUILD OUTPUT:
+=============
+
+After successful build, you'll have:
+  HandleHunter.exe   - The application (~100 KB)
+  main.o             - Object file
+  gui.o              - Object file
+  netapi.o           - Object file
+  lockinfo.o         - Object file
+
+
+HOW TO RUN:
+===========
+
+Right-click HandleHunter.exe → Run as administrator
+
+
+USAGE:
+======
+
+1. Enter server name (e.g., FILESERVER01)
+2. Click "Connect"
+3. See all open files in the list
+4. Use search box to filter
+5. Select a file and click "Release Selected Lock" to close it
+
+
+TESTING:
+========
+
+Test on a non-production server first!
+Verify you can:
+  ✓ Connect to server
+  ✓ See open files
+  ✓ Search and filter
+  ✓ Release a lock
+
+
+SUPPORT:
+========
+
+If you need help:
+  1. Check BUILD_INSTRUCTIONS.txt
+  2. Check PROJECT_STATUS.txt
+  3. Verify all files are present: verify_files.bat
+  4. Make sure GCC is installed: test_gcc.bat
+
+
+═══════════════════════════════════════════════════════════════
+
+Ready to build? Run:  build.bat
+
+═══════════════════════════════════════════════════════════════
+
