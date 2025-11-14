@@ -19,5 +19,8 @@
 #define IDM_FILE_EXIT        2001
 #define IDM_HELP_ABOUT       2002
 
+// Accelerator IDs
+#define IDC_ACCEL_REFRESH    3001    // F5 key accelerator for refresh
+
 #endif // RESOURCE_H
 

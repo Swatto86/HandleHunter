@@ -447,13 +447,6 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             return 0;
         }
         
-        case WM_KEYDOWN: {
-            if (wParam == VK_F5) {
-                OnRefresh(hwnd, state);
-            }
-            return 0;
-        }
-        
         case WM_DESTROY: {
             if (state) {
                 LockArray_Free(&state->locks);

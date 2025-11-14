@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include "gui.h"
+#include "resource.h"
 
 /**
  * Windows GUI Application Entry Point
@@ -24,15 +25,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return 1;
     }
     
+    // Load accelerator table for F5 and other shortcuts
+    HACCEL hAccel = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_ACCEL_REFRESH));
+    
     // Show the window
     ShowWindow(hwndMain, nCmdShow);
     UpdateWindow(hwndMain);
     
-    // Main message loop
+    // Main message loop with accelerator support
     MSG msg;
     while (GetMessage(&msg, NULL, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        // TranslateAccelerator processes keyboard shortcuts (like F5)
+        if (!TranslateAccelerator(hwndMain, hAccel, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
     }
     
     return (int)msg.wParam;
