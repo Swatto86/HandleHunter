@@ -24,7 +24,7 @@ HWND CreateMainWindow(HINSTANCE hInstance) {
     wc.lpfnWndProc = MainWindowProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = CreateSolidBrush(COLOR_BG_DARK);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"HandleHunterClass";
     wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
     wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
@@ -77,7 +77,7 @@ void CreateControls(HWND hwndParent, AppState* state) {
         60, 20,
         hwndParent, NULL, hInst, NULL);
     
-    // Set label font and color (larger)
+    // Set label font
     HFONT hFont = CreateFontW(
         19, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -86,22 +86,25 @@ void CreateControls(HWND hwndParent, AppState* state) {
     );
     SendMessage(hwndSearchLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
     
-    // Search box (rounded, taller)
+    // Search box (standard edit control)
     state->hwndSearch = CreateWindowExW(
-        0,
+        WS_EX_CLIENTEDGE,
         L"EDIT",
         L"",
-        WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+        WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | WS_TABSTOP,
         85, y - 2,
         300, 32,
         hwndParent,
         (HMENU)IDC_SEARCH_EDIT,
         hInst, NULL);
     SendMessage(state->hwndSearch, WM_SETFONT, (WPARAM)hFont, TRUE);
-    SubclassEditForDarkMode(state->hwndSearch);
     
-    // Refresh button (modern style, taller)
-    CreateModernButton(hwndParent, L"Refresh (F5)", 395, y - 2, 130, 32, IDC_REFRESH_BTN, hInst);
+    // Refresh button (standard button control)
+    HWND hwndRefreshBtn = CreateWindowW(L"BUTTON", L"Refresh (F5)",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+        395, y - 2, 130, 32,
+        hwndParent, (HMENU)IDC_REFRESH_BTN, hInst, NULL);
+    SendMessage(hwndRefreshBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     y += 40;
     
@@ -122,10 +125,10 @@ void CreateControls(HWND hwndParent, AppState* state) {
         (HMENU)IDC_LISTVIEW,
         hInst, NULL);
     
-    // Apply dark mode to ListView
+    // Apply standard theming to ListView
     SubclassListViewForDarkMode(state->hwndListView);
     
-    // Set ListView font (larger)
+    // Set ListView font
     HFONT hListFont = CreateFontW(
         17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -162,10 +165,14 @@ void CreateControls(HWND hwndParent, AppState* state) {
     // Action Buttons
     // ============================================
     
-    // Position release button on the right side
+    // Position release button on the right side (standard button control)
     int btnWidth = 220;
     int btnX = rcClient.right - btnWidth - 15;
-    CreateModernButton(hwndParent, L"Release Selected Lock(s)", btnX, rcClient.bottom - 72, btnWidth, 36, IDC_RELEASE_BTN, hInst);
+    HWND hwndReleaseBtn = CreateWindowW(L"BUTTON", L"Release Selected Lock(s)",
+        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_TABSTOP,
+        btnX, rcClient.bottom - 72, btnWidth, 36,
+        hwndParent, (HMENU)IDC_RELEASE_BTN, hInst, NULL);
+    SendMessage(hwndReleaseBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // ============================================
     // Status Bar
@@ -180,7 +187,7 @@ void CreateControls(HWND hwndParent, AppState* state) {
         (HMENU)IDC_STATUSBAR,
         hInst, NULL);
     
-    // Set status bar font (larger) and dark background
+    // Set status bar font
     HFONT hStatusFont = CreateFontW(
         17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -188,7 +195,6 @@ void CreateControls(HWND hwndParent, AppState* state) {
         L"Segoe UI"
     );
     SendMessage(state->hwndStatus, WM_SETFONT, (WPARAM)hStatusFont, TRUE);
-    SendMessage(state->hwndStatus, SB_SETBKCOLOR, 0, (LPARAM)COLOR_BG_DARKER);
 }
 
 /**
@@ -404,22 +410,6 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 }
             }
             return 0;
-        }
-        
-        case WM_CTLCOLORSTATIC: {
-            HDC hdcStatic = (HDC)wParam;
-            SetTextColor(hdcStatic, COLOR_TEXT_PRIMARY);
-            SetBkColor(hdcStatic, COLOR_BG_DARK);
-            return (LRESULT)CreateSolidBrush(COLOR_BG_DARK);
-        }
-        
-        case WM_DRAWITEM: {
-            LPDRAWITEMSTRUCT lpDrawItem = (LPDRAWITEMSTRUCT)lParam;
-            if (lpDrawItem->CtlType == ODT_BUTTON) {
-                DrawModernButton(lpDrawItem);
-                return TRUE;
-            }
-            return FALSE;
         }
         
         case WM_COMMAND: {
