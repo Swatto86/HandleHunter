@@ -26,7 +26,7 @@ echo.
 REM Configuration
 set CC=gcc
 set WINDRES=windres
-set CFLAGS=-O2 -Wall -DUNICODE -D_UNICODE
+set CFLAGS=-O2 -Wall -DUNICODE -D_UNICODE -D__USE_MINGW_ANSI_STDIO=1
 set LDFLAGS=-mwindows -lnetapi32 -lcomctl32 -ldwmapi -luxtheme -s
 set TARGET=HandleHunter.exe
 
