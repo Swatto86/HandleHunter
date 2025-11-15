@@ -1062,4 +1062,8 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         default:
             return DefWindowProc(hwnd, msg, wParam, lParam);
     }
+
+    // Fallback: if a case used 'break' instead of 'return', make sure we still
+    // provide a valid default response to satisfy the non-void contract.
+    return DefWindowProc(hwnd, msg, wParam, lParam);
 }
