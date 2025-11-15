@@ -32,8 +32,7 @@ A lightweight Windows utility for managing file locks on the local machine, buil
 ### Build Steps
 
 1. Open **Command Prompt** (cmd.exe) in the project directory
-2. (Optional) Generate icon: `powershell -ExecutionPolicy Bypass -File create_icon.ps1`
-3. Build: `build.bat`
+2. Build: `build.bat`
 
 The executable `HandleHunter.exe` will be created with:
 - Application manifest embedded (UAC elevation + DPI awareness)
@@ -94,7 +93,6 @@ HandleHunter/
 ├── HandleHunter.rc     # Resource script (embeds manifest & icon)
 ├── manifest.xml        # UAC elevation and DPI awareness manifest
 ├── icon.ico            # Application icon
-├── create_icon.ps1     # PowerShell script to generate application icon
 ├── build.bat           # Build script
 └── README.md           # This file
 ```
