@@ -779,6 +779,16 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             state->hwndServer = NULL;
             
             // ============================================
+            // STEP 2a: Initialize theme state
+            // ============================================
+            // Get current theme colors and create background brush
+            GetThemeColors(&state->themeColors);
+            state->hBackgroundBrush = CreateSolidBrush(state->themeColors.background);
+            
+            // Store main window handle for later access
+            state->hwndMain = hwnd;
+            
+            // ============================================
             // STEP 3: Store state in window's user data
             // ============================================
             // WHY: Allows retrieving state later without static variable
@@ -936,6 +946,13 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 // WHY: Prevents memory leak when application exits
                 LockArray_Free(&state->locks);
                 
+                // Delete background brush
+                // WHY: GDI objects must be explicitly deleted to prevent resource leak
+                if (state->hBackgroundBrush) {
+                    DeleteObject(state->hBackgroundBrush);
+                    state->hBackgroundBrush = NULL;
+                }
+                
                 // Free the AppState structure itself
                 free(state);
                 state = NULL;  // Prevent use-after-free bugs
@@ -949,6 +966,81 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             //      GetMessage returns 0 when WM_QUIT is received
             PostQuitMessage(0);  // 0 = exit code (success)
             return 0;
+        }
+        
+        // ========================================
+        // WM_SETTINGCHANGE - System settings changed
+        // ========================================
+        // Sent when user changes system settings, including theme
+        // This allows app to update when user switches between light/dark mode
+        case WM_SETTINGCHANGE: {
+            // Check if this is a theme/immersive color change
+            // lParam contains the area that changed (can be NULL)
+            if (lParam && (wcscmp((LPCWSTR)lParam, L"ImmersiveColorSet") == 0)) {
+                if (state) {
+                    // ============================================
+                    // Theme changed - update colors and repaint
+                    // ============================================
+                    
+                    // Delete old background brush
+                    if (state->hBackgroundBrush) {
+                        DeleteObject(state->hBackgroundBrush);
+                    }
+                    
+                    // Get new theme colors
+                    GetThemeColors(&state->themeColors);
+                    
+                    // Create new background brush
+                    state->hBackgroundBrush = CreateSolidBrush(state->themeColors.background);
+                    
+                    // Apply theme changes to window
+                    ApplyThemeToWindow(hwnd);
+                }
+            }
+            return 0;
+        }
+        
+        // ========================================
+        // WM_CTLCOLORSTATIC - Color static controls (labels)
+        // ========================================
+        // Sent before drawing static controls (labels)
+        // We customize colors to match dark/light theme
+        case WM_CTLCOLORSTATIC: {
+            if (state) {
+                HDC hdc = (HDC)wParam;
+                
+                // Set text color to match theme
+                SetTextColor(hdc, state->themeColors.text);
+                
+                // Set background color to match theme
+                SetBkColor(hdc, state->themeColors.background);
+                
+                // Return brush for background
+                // WHY: Windows uses this to paint control background
+                return (LRESULT)state->hBackgroundBrush;
+            }
+            break;  // Fall through to default if no state
+        }
+        
+        // ========================================
+        // WM_CTLCOLOREDIT - Color edit controls
+        // ========================================
+        // Sent before drawing edit controls (text boxes)
+        // We customize colors to match dark/light theme
+        case WM_CTLCOLOREDIT: {
+            if (state) {
+                HDC hdc = (HDC)wParam;
+                
+                // Set text color for edit controls
+                SetTextColor(hdc, state->themeColors.editText);
+                
+                // Set background color for edit controls
+                SetBkColor(hdc, state->themeColors.editBg);
+                
+                // Return brush for edit control background
+                return (LRESULT)state->hBackgroundBrush;
+            }
+            break;  // Fall through to default if no state
         }
         
         // ========================================

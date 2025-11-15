@@ -248,3 +248,97 @@ void SubclassListViewForDarkMode(HWND hwndListView) {
     // ALTERNATIVE: Could use NULL for default theme, but Explorer looks better
 }
 
+/**
+ * GetThemeColors - Get appropriate colors based on Windows theme
+ * 
+ * This function determines the current Windows theme (dark or light) and
+ * returns appropriate colors for the application UI.
+ * 
+ * WHY THIS FUNCTION EXISTS:
+ * - Windows controls need explicit colors for proper dark mode appearance
+ * - System colors (COLOR_WINDOW, COLOR_WINDOWTEXT) automatically adapt
+ * - But we need to explicitly apply them to custom-drawn areas
+ * 
+ * COLOR STRATEGY:
+ * - Use system colors when available (they adapt automatically)
+ * - System automatically provides appropriate colors based on theme
+ * - This ensures consistency with other Windows applications
+ * 
+ * WHAT COLORS WE NEED:
+ * - Background: For window client area
+ * - Text: For labels and static text
+ * - Edit controls: Background and text colors
+ * 
+ * @param colors - Pointer to ThemeColors structure to fill
+ */
+void GetThemeColors(ThemeColors* colors) {
+    if (!colors) return;
+    
+    // ============================================
+    // Get system colors that adapt to theme
+    // ============================================
+    // Windows automatically adjusts these based on dark/light mode
+    // WHY: This ensures our app matches the system theme consistently
+    
+    // Background color for window client area
+    // COLOR_WINDOW: Standard window background (white in light, dark in dark mode)
+    colors->background = GetSysColor(COLOR_WINDOW);
+    
+    // Text color for labels and static controls
+    // COLOR_WINDOWTEXT: Standard window text (black in light, white in dark mode)
+    colors->text = GetSysColor(COLOR_WINDOWTEXT);
+    
+    // Edit control background color
+    // COLOR_WINDOW: Edit controls use same background as window
+    colors->editBg = GetSysColor(COLOR_WINDOW);
+    
+    // Edit control text color
+    // COLOR_WINDOWTEXT: Edit controls use same text color as window
+    colors->editText = GetSysColor(COLOR_WINDOWTEXT);
+}
+
+/**
+ * ApplyThemeToWindow - Apply theme styling to window and force repaint
+ * 
+ * This function updates the window's appearance to match the current theme.
+ * It should be called when the theme changes or when the window is created.
+ * 
+ * WHY THIS FUNCTION EXISTS:
+ * - Windows theme changes require reapplying dark mode attributes
+ * - Title bar needs to be updated when theme changes
+ * - Window needs to be repainted to reflect new colors
+ * 
+ * WHAT THIS DOES:
+ * 1. Reapply dark mode to title bar (if in dark mode)
+ * 2. Force window to repaint with new colors
+ * 3. Update all child controls
+ * 
+ * WHEN TO CALL:
+ * - During window creation (WM_CREATE)
+ * - When receiving WM_SETTINGCHANGE (theme changed)
+ * - After any theme-related configuration change
+ * 
+ * @param hwnd - Handle to main window to update
+ */
+void ApplyThemeToWindow(HWND hwnd) {
+    if (!hwnd) return;
+    
+    // ============================================
+    // STEP 1: Reapply dark mode to title bar
+    // ============================================
+    // WHY: Theme change requires reapplying DWM attributes
+    EnableDarkMode(hwnd);
+    
+    // ============================================
+    // STEP 2: Force complete window redraw
+    // ============================================
+    // InvalidateRect with NULL rect = invalidate entire window
+    // TRUE = erase background before repainting
+    // WHY: Ensures all colors update immediately
+    InvalidateRect(hwnd, NULL, TRUE);
+    
+    // UpdateWindow forces immediate repaint (doesn't wait for message queue)
+    // WHY: Provides instant visual feedback when theme changes
+    UpdateWindow(hwnd);
+}
+
