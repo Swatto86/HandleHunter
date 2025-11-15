@@ -54,14 +54,17 @@ build.bat clean
 3. **Search**: Use the search box to filter results by filename, path, or username
 4. **Refresh**: Click "Refresh (F5)" or press F5 to update the list
 5. **Multi-Select**: Use Ctrl+Click to select multiple files, Shift+Click for ranges
-6. **Release Locks**: Select one or more files and click "Release Selected Lock(s)" or double-click
+6. **Release Locks**: Select one or more files and click "Release Selected Lock(s)", press Del, or double-click
+7. **Navigate**: Use Tab key to move between controls (search box, buttons, list)
 
 ## Keyboard Shortcuts
 
 - **F5**: Refresh file list
+- **Del**: Release selected lock(s) (with confirmation)
 - **Ctrl+Click**: Select multiple individual files
 - **Shift+Click**: Select range of files
 - **Ctrl+A**: Select all files
+- **Tab**: Navigate between controls
 - **Double-click**: Release selected lock(s) (with confirmation)
 
 ## Troubleshooting
