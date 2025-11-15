@@ -37,8 +37,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     while (GetMessage(&msg, NULL, 0, 0)) {
         // TranslateAccelerator processes keyboard shortcuts (like F5)
         if (!TranslateAccelerator(hwndMain, hAccel, &msg)) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            // IsDialogMessage handles tab navigation between controls
+            if (!IsDialogMessage(hwndMain, &msg)) {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
     }
     
