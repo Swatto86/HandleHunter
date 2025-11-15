@@ -299,7 +299,7 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
         WCHAR filename[512];
         ListView_GetItemText(state->hwndListView, selectedIndex, 0, filename, 512);
         swprintf(confirmMsg, 768, 
-            L"Are you sure you want to release the lock on:\n\n%s\n\nWarning: This may cause unsaved data loss!", 
+            L"Are you sure you want to release the lock on:\n\n%ls\n\nWarning: This may cause unsaved data loss!", 
             filename);
     } else {
         swprintf(confirmMsg, 768, 
