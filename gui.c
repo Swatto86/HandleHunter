@@ -425,7 +425,8 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                     break;
                     
                 case IDC_RELEASE_BTN:
-                    if (notifyCode == BN_CLICKED) {
+                    // Handle both button clicks and accelerator commands (Del key)
+                    if (notifyCode == BN_CLICKED || notifyCode == 1) {
                         OnReleaseLock(hwnd, state);
                     }
                     break;
