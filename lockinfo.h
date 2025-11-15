@@ -9,6 +9,7 @@
  #define LOCKINFO_H
  
  #include <windows.h>    // For DWORD, WCHAR, MAX_PATH, HWND, BOOL
+ #include "modern_ui.h"  // For ThemeColors structure
  
  /**
   * FileLockInfo - Represents a single file lock on a server
@@ -89,6 +90,11 @@
      
      BOOL isRefreshing;         // Flag indicating if refresh is in progress
                                  // Used to prevent multiple simultaneous refreshes
+     
+     // Theme state
+     ThemeColors themeColors;   // Current theme colors for dark/light mode
+     HBRUSH hBackgroundBrush;   // Brush for window background color
+                                 // Must be deleted on theme change and window destroy
  } AppState;
  
  // Function declarations (implemented in lockinfo.c)
