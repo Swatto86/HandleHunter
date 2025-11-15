@@ -297,27 +297,36 @@ void CreateControls(HWND hwndParent, AppState* state) {
     // Column structure (reused for each column)
     LVCOLUMNW col = {0};
     col.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_FMT;  // Which fields are valid
-    col.fmt = LVCFMT_LEFT;                          // Text alignment
     
-    // Column 0: File Name
-    col.cx = 200;                   // Width in pixels
-    col.pszText = L"File Name";     // Column header text
+    // Column 0: Invisible column (width 0) for proper centering
+    // WHY: Win32 ListView requires an invisible first column to properly center content
+    col.fmt = LVCFMT_LEFT;
+    col.cx = 0;                     // Width 0 (invisible)
+    col.pszText = L"";              // Empty text
     ListView_InsertColumn(state->hwndListView, 0, &col);
     
-    // Column 1: Path
-    col.cx = 350;
-    col.pszText = L"Path";
+    // Set center alignment for all visible columns
+    col.fmt = LVCFMT_CENTER;
+    
+    // Column 1: File Name
+    col.cx = 200;                   // Width in pixels
+    col.pszText = L"File Name";     // Column header text
     ListView_InsertColumn(state->hwndListView, 1, &col);
     
-    // Column 2: User
-    col.cx = 120;
-    col.pszText = L"User";
+    // Column 2: Path
+    col.cx = 350;
+    col.pszText = L"Path";
     ListView_InsertColumn(state->hwndListView, 2, &col);
     
-    // Column 3: Locks
+    // Column 3: User
+    col.cx = 120;
+    col.pszText = L"User";
+    ListView_InsertColumn(state->hwndListView, 3, &col);
+    
+    // Column 4: Locks
     col.cx = 80;
     col.pszText = L"Locks";
-    ListView_InsertColumn(state->hwndListView, 3, &col);
+    ListView_InsertColumn(state->hwndListView, 4, &col);
     
     // Set extended ListView styles
     // WHY: These make the ListView more user-friendly
@@ -458,21 +467,22 @@ void UpdateListView(AppState* state) {
         item.mask = LVIF_TEXT | LVIF_PARAM;  // We're setting text and lParam
         item.iItem = ListView_GetItemCount(state->hwndListView);  // Add at end
         item.lParam = (LPARAM)lock->fileId;  // Store file ID for later (release lock)
-        item.pszText = lock->fileName;        // Text for column 0 (File Name)
+        item.pszText = L"";                   // Text for column 0 (invisible column)
         
         // Insert the item
         int index = ListView_InsertItem(state->hwndListView, &item);
         // WHY: ListView_InsertItem returns the index where item was inserted
         //      We use this index to set text for other columns
         
-        // Set text for remaining columns (can't do in LVITEMW)
-        ListView_SetItemText(state->hwndListView, index, 1, lock->filePath);  // Column 1: Path
-        ListView_SetItemText(state->hwndListView, index, 2, lock->username);  // Column 2: User
+        // Set text for all visible columns (columns 1-4, since 0 is invisible)
+        ListView_SetItemText(state->hwndListView, index, 1, lock->fileName);  // Column 1: File Name
+        ListView_SetItemText(state->hwndListView, index, 2, lock->filePath);  // Column 2: Path
+        ListView_SetItemText(state->hwndListView, index, 3, lock->username);  // Column 3: User
         
         // Format lock count as string
         WCHAR lockCount[16];
         swprintf(lockCount, 16, L"%lu", lock->numLocks);
-        ListView_SetItemText(state->hwndListView, index, 3, lockCount);  // Column 3: Locks
+        ListView_SetItemText(state->hwndListView, index, 4, lockCount);  // Column 4: Locks
     }
     
     // ============================================
@@ -600,7 +610,7 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
         // Single selection - show filename in confirmation
         int selectedIndex = ListView_GetNextItem(state->hwndListView, -1, LVNI_SELECTED);
         WCHAR filename[512];
-        ListView_GetItemText(state->hwndListView, selectedIndex, 0, filename, 512);
+        ListView_GetItemText(state->hwndListView, selectedIndex, 1, filename, 512);  // Column 1: File Name
         swprintf(confirmMsg, 768, 
             L"Are you sure you want to release the lock on:\n\n%ls\n\n"
             L"Warning: This may cause unsaved data loss!", 
