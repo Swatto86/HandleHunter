@@ -32,7 +32,7 @@
  * WHY WE USE WinMain INSTEAD OF main():
  * - Windows GUI apps don't have a console by default
  * - WinMain receives GUI-specific parameters like window display state
- * - The linker flag -mwindows tells GCC to use WinMain instead of main()
+ * - The /SUBSYSTEM:WINDOWS linker flag enables GUI mode
  * 
  * @param hInstance     - Handle to current instance of the application
  *                        Used to load resources (icons, menus) and create windows
@@ -47,6 +47,10 @@
  */
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, 
                    LPSTR lpCmdLine, int nCmdShow) {
+    // UNREFERENCED PARAMETERS: Suppress compiler warnings
+    // WHY: These parameters are legacy/reserved but required by WinMain signature
+    (void)hPrevInstance;  // Always NULL in modern Windows
+    (void)lpCmdLine;      // Not used (we don't parse command line args)
     
     // ============================================
     // STEP 1: Initialize Windows Common Controls

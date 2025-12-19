@@ -24,12 +24,17 @@
  * - NetAPI functions allocate memory internally
  * - MUST free with NetApiBufferFree, NOT free() or delete
  * - Failure to free causes memory leaks
+ * 
+ * NO CRT DEPENDENCIES:
+ * - Pure Windows API implementation
+ * - No stdio.h, stdlib.h, or string.h dependencies
+ * - All string operations use Windows API or manual implementations
  */
 
 #include <windows.h>     // Core Windows API
 #include <lm.h>          // LanManager API (NetFileEnum, NetFileClose, etc.)
-#include <stdio.h>       // Not currently used, but included for potential debugging
 #include "lockinfo.h"    // FileLockInfo and LockArray structures
+#include "utilities.h"   // CRT-free utility functions (StrCopyN, StrCopy)
 
 /**
  * EnumerateOpenFiles - Enumerate all open files on a server
@@ -161,40 +166,39 @@ DWORD EnumerateOpenFiles(WCHAR* serverName, LockArray* outArray) {
          // ========================================
          // Copy Server Name
          // ========================================
+         // FUNCTION LINKAGE: StrCopyN is our CRT-free wcsncpy replacement (always null-terminates)
          if (serverName) {
              // Remote server - copy the server name
-             wcsncpy(lock.serverName, serverName, 255);
+             StrCopyN(lock.serverName, serverName, 256);
          } else {
              // Local machine - use "LOCAL" as placeholder
-             wcsncpy(lock.serverName, L"LOCAL", 255);
+             StrCopyN(lock.serverName, L"LOCAL", 256);
          }
-         lock.serverName[255] = L'\0';  // Ensure null termination
-         // WHY NULL TERMINATE: wcsncpy doesn't guarantee null termination if source is too long
          
          // ========================================
          // Copy and Parse File Path
          // ========================================
          if (pFile->fi3_pathname) {
              // Copy full file path with bounds checking
-             wcsncpy(lock.filePath, pFile->fi3_pathname, MAX_PATH - 1);
-             lock.filePath[MAX_PATH - 1] = L'\0';  // Ensure null termination
+             // FUNCTION LINKAGE: StrCopyN is our CRT-free wcsncpy replacement
+             StrCopyN(lock.filePath, pFile->fi3_pathname, MAX_PATH);
              
              // Extract just the filename from the full path
              // WHY: ListView displays filename separately from path for readability
              //      Users often search by filename, not full path
              
              // Find the last backslash in the path
+             // FUNCTION LINKAGE: StrCopyN is our CRT-free wcsncpy replacement
              WCHAR* lastSlash = wcsrchr(lock.filePath, L'\\');
              if (lastSlash) {
                  // Backslash found - everything after it is the filename
                  // lastSlash + 1 skips the backslash itself
-                 wcsncpy(lock.fileName, lastSlash + 1, 255);
+                 StrCopyN(lock.fileName, lastSlash + 1, 256);
              } else {
                  // No backslash found - entire path is the filename
                  // This shouldn't happen with UNC paths, but handle it gracefully
-                 wcsncpy(lock.fileName, lock.filePath, 255);
+                 StrCopyN(lock.fileName, lock.filePath, 256);
              }
-             lock.fileName[255] = L'\0';  // Ensure null termination
          } else {
              // No path available (shouldn't happen, but be defensive)
              lock.fileName[0] = L'\0';
@@ -204,13 +208,13 @@ DWORD EnumerateOpenFiles(WCHAR* serverName, LockArray* outArray) {
          // ========================================
          // Copy Username
          // ========================================
+         // FUNCTION LINKAGE: StrCopyN/StrCopy are our CRT-free replacements
          if (pFile->fi3_username) {
              // Copy username with bounds checking
-             wcsncpy(lock.username, pFile->fi3_username, 255);
-             lock.username[255] = L'\0';  // Ensure null termination
+             StrCopyN(lock.username, pFile->fi3_username, 256);
          } else {
              // No username available (very rare, but be defensive)
-             wcscpy(lock.username, L"Unknown");
+             StrCopy(lock.username, L"Unknown");
          }
          
          // ========================================

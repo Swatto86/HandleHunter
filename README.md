@@ -9,41 +9,41 @@ A lightweight Windows utility for managing file locks on the local machine, buil
 - **Multi-Select**: Select and release multiple file locks at once (Ctrl+Click, Shift+Click)
 - **Search/Filter**: Real-time filtering as you type
 - **DPI-Aware**: Crisp display on high-resolution monitors (PerMonitorV2)
-- **Lightweight**: ~79KB executable, no dependencies required
+- **Lightweight**: ~134KB executable, no dependencies required
 - **Fast**: Instant launch, no runtime overhead
 
 ## Requirements
 
 - Windows 7 or later
 - Administrator privileges (required for NetFileEnum/NetFileClose)
-- MinGW-w64 (GCC compiler) for building
+- Visual Studio 2022 Build Tools (MSVC compiler) for building
 
 ## Building
 
 ### Prerequisites
 
-1. Install MinGW-w64 from [mingw-w64.org](https://www.mingw-w64.org/) or using winget:
-   ```
-   winget install mingw-w64
-   ```
-2. Add MinGW-w64 bin directory to your PATH (e.g., `C:\mingw64\bin`)
-3. Verify installation: `gcc --version`
+1. Install Visual Studio 2022 Build Tools with C++ support:
+   - Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
+   - Or use winget: `winget install Microsoft.VisualStudio.2022.BuildTools`
+   - Select "Desktop development with C++" workload
+2. Ensure `vcvars64.bat` is accessible (build script will locate it automatically)
 
 ### Build Steps
 
-1. Open **Command Prompt** (cmd.exe) in the project directory
-2. Build: `build.bat`
+1. Open **PowerShell** or **Command Prompt** in the project directory
+2. Build: `.\build_msvc.bat`
 
 The executable `HandleHunter.exe` will be created with:
 - Application manifest embedded (UAC elevation + DPI awareness)
 - Visual styles enabled (modern themed controls)
 - Application icon embedded
+- Fully CRT-free implementation (except minimal WinMain startup)
 
 ### Clean Build
 
 To remove all build artifacts:
 ```
-build.bat clean
+.\build_msvc.bat clean
 ```
 
 ## Usage
@@ -74,7 +74,7 @@ build.bat clean
 
 ### Side-by-Side Configuration Error
 - This should not occur with properly embedded manifest
-- Try rebuilding: `build.bat clean` then `build.bat`
+- Try rebuilding: delete all .obj files and rebuild with `build_msvc.bat`
 
 ## Project Structure
 
@@ -87,23 +87,29 @@ HandleHunter/
 ├── modern_ui.h         # Theme detection function declarations
 ├── netapi.c            # Windows NetAPI wrapper functions
 ├── netapi.h            # NetAPI function declarations
-├── lockinfo.c          # Dynamic array implementation
+├── lockinfo.c          # Dynamic array implementation (CRT-free)
 ├── lockinfo.h          # Data structures (FileLockInfo, LockArray, AppState)
+├── utilities.c         # CRT-free utility functions (MemCopy, StrSearch, etc.)
+├── utilities.h         # CRT-free utility function declarations
 ├── resource.h          # Control IDs and resource identifiers
 ├── HandleHunter.rc     # Resource script (embeds manifest & icon)
 ├── manifest.xml        # UAC elevation and DPI awareness manifest
 ├── icon.ico            # Application icon
-├── build.bat           # Build script
+├── build_msvc.bat      # MSVC build script (VS Build Tools required)
 └── README.md           # This file
 ```
 
 ## Technical Details
 
 - **Language**: Pure C (C99)
+- **Compiler**: Microsoft Visual C++ (MSVC) from VS 2022 Build Tools
 - **API**: Win32 API (no frameworks)
-- **Libraries**: netapi32.lib, comctl32.lib, dwmapi.lib, uxtheme.lib
+- **Libraries**: kernel32.lib, user32.lib, gdi32.lib, advapi32.lib, netapi32.lib, comctl32.lib, dwmapi.lib, uxtheme.lib
 - **Unicode**: Full Unicode support (UTF-16)
-- **Memory Management**: Manual malloc/free (no garbage collection)
+- **Memory Management**: Windows Heap API (HeapAlloc/HeapFree) - **completely CRT-free**
+- **String Operations**: Manual implementations (StrLen, StrSearch, StrToLower, StrCopyN, MemCopy, MemZero)
+- **Formatting**: Windows API wsprintfW (user32.lib) instead of stdio.h swprintf
+- **Binary Size**: ~137 KB with all features and optimizations
 - **DPI Aware**: PerMonitorV2 (Windows 10+) with fallback
 - **Visual Styles**: Uses standard Windows controls with system theme detection
 - **Modern Features**: Conditional dark mode title bar (based on Windows theme), rounded corners (Windows 11)

@@ -25,13 +25,12 @@
 
 #include <windows.h>      // Core Windows API
 #include <commctrl.h>     // Common Controls (ListView, StatusBar)
-#include <stdio.h>        // swprintf for string formatting
-#include <string.h>       // memset, wcslen, wcsstr for string operations
 #include <uxtheme.h>      // SetWindowTheme for modern control styling
 #include "resource.h"     // Control IDs (IDC_REFRESH_BTN, etc.)
 #include "gui.h"          // Function declarations
 #include "netapi.h"       // File lock enumeration and closing
 #include "modern_ui.h"    // Dark mode and modern window styling
+#include "utilities.h"    // CRT-free utility functions (MemZero, StrLen, etc.)
 
 /**
  * CreateMainWindow - Create and register the main application window
@@ -201,11 +200,8 @@ void CreateControls(HWND hwndParent, AppState* state) {
         DEFAULT_PITCH | FF_DONTCARE,// Pitch and family
         L"Segoe UI"                 // Font name
     );
-    // NOTE: Font handle is not stored, so it leaks on exit
-    //       For a simple app this is acceptable (OS cleans up on exit)
-    //       For long-running apps, store handle and call DeleteObject() on WM_DESTROY
     
-    // Apply font to label
+    // Apply font to all controls
     SendMessage(hwndSearchLabel, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // Create search text box (edit control)
@@ -224,8 +220,6 @@ void CreateControls(HWND hwndParent, AppState* state) {
         hInst,                      // Application instance
         NULL                        // No creation data
     );
-    // Store handle in AppState so we can access it later
-    // WHY: Need to read text value when filtering, set focus, etc.
     SendMessage(state->hwndSearch, WM_SETFONT, (WPARAM)hFont, TRUE);
     
     // Create Refresh button
@@ -281,6 +275,7 @@ void CreateControls(HWND hwndParent, AppState* state) {
     SubclassListViewForDarkMode(state->hwndListView);
     
     // Create and apply font for ListView
+    // WHY: Consistent font across all controls
     HFONT hListFont = CreateFontW(
         17, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -426,11 +421,13 @@ void UpdateListView(AppState* state) {
         GetWindowTextW(state->hwndSearch, searchText, 256);
         // Convert to lowercase for case-insensitive comparison
         // WHY: Users expect "test" to match "Test", "TEST", etc.
-        _wcslwr(searchText);  // Modifies string in-place
+        // FUNCTION LINKAGE: StrToLower is our CRT-free _wcslwr replacement
+        StrToLower(searchText);  // Modifies string in-place
     }
     
     // Check if filter is active (non-empty search text)
-    BOOL hasFilter = (wcslen(searchText) > 0);
+    // FUNCTION LINKAGE: StrLen is our CRT-free wcslen replacement
+    BOOL hasFilter = (StrLen(searchText) > 0);
     
     // ============================================
     // STEP 3: Add matching items to ListView
@@ -441,20 +438,22 @@ void UpdateListView(AppState* state) {
         // Apply search filter if active
         if (hasFilter) {
             // Create lowercase copies of fields to search
+            // FUNCTION LINKAGE: StrCopyN/StrToLower are CRT-free replacements
             WCHAR lowerFilename[512], lowerPath[512], lowerUsername[256];
-            wcsncpy(lowerFilename, lock->fileName, 256);
-            wcsncpy(lowerPath, lock->filePath, MAX_PATH);
-            wcsncpy(lowerUsername, lock->username, 256);
-            _wcslwr(lowerFilename);
-            _wcslwr(lowerPath);
-            _wcslwr(lowerUsername);
+            StrCopyN(lowerFilename, lock->fileName, 512);
+            StrCopyN(lowerPath, lock->filePath, 512);
+            StrCopyN(lowerUsername, lock->username, 256);
+            StrToLower(lowerFilename);
+            StrToLower(lowerPath);
+            StrToLower(lowerUsername);
             
             // Check if search text appears in any field
             // WHY: Search should check filename, path, AND username
             //      User might remember any of these details
-            if (!wcsstr(lowerFilename, searchText) &&   // Not in filename
-                !wcsstr(lowerPath, searchText) &&       // Not in path
-                !wcsstr(lowerUsername, searchText)) {   // Not in username
+            // FUNCTION LINKAGE: StrSearch is our CRT-free wcsstr replacement
+            if (!StrSearch(lowerFilename, searchText) &&   // Not in filename
+                !StrSearch(lowerPath, searchText) &&       // Not in path
+                !StrSearch(lowerUsername, searchText)) {   // Not in username
                 // No match - skip this item
                 continue;
             }
@@ -480,16 +479,18 @@ void UpdateListView(AppState* state) {
         ListView_SetItemText(state->hwndListView, index, 3, lock->username);  // Column 3: User
         
         // Format lock count as string
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
         WCHAR lockCount[16];
-        swprintf(lockCount, 16, L"%lu", lock->numLocks);
+        wsprintfW(lockCount, L"%lu", lock->numLocks);
         ListView_SetItemText(state->hwndListView, index, 4, lockCount);  // Column 4: Locks
     }
     
     // ============================================
     // STEP 4: Update status bar with count
     // ============================================
+    // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
     WCHAR statusText[256];
-    swprintf(statusText, 256, L"Showing %d file(s)", ListView_GetItemCount(state->hwndListView));
+    wsprintfW(statusText, L"Showing %d file(s)", ListView_GetItemCount(state->hwndListView));
     SetWindowTextW(state->hwndStatus, statusText);
     // WHY: Provides feedback about how many items are visible
     //      If filtered, user knows how many matches were found
@@ -546,15 +547,17 @@ void OnRefresh(HWND hwnd, AppState* state) {
         UpdateListView(state);
         
         // Show count in status bar
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
         WCHAR statusText[256];
-        swprintf(statusText, 256, L"Found %lu open file(s)", state->locks.count);
+        wsprintfW(statusText, L"Found %lu open file(s)", state->locks.count);
         SetWindowTextW(state->hwndStatus, statusText);
     } else {
         // Error occurred
         // WHY: Show error code to help diagnose issues
         //      Common error: 5 (Access Denied) = not running as Administrator
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
         WCHAR errorMsg[512];
-        swprintf(errorMsg, 512, 
+        wsprintfW(errorMsg, 
             L"Failed to enumerate files. Error code: %lu\n"
             L"Make sure you're running as Administrator.", 
             result);
@@ -611,13 +614,15 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
         int selectedIndex = ListView_GetNextItem(state->hwndListView, -1, LVNI_SELECTED);
         WCHAR filename[512];
         ListView_GetItemText(state->hwndListView, selectedIndex, 1, filename, 512);  // Column 1: File Name
-        swprintf(confirmMsg, 768, 
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
+        wsprintfW(confirmMsg, 
             L"Are you sure you want to release the lock on:\n\n%ls\n\n"
             L"Warning: This may cause unsaved data loss!", 
             filename);
     } else {
         // Multiple selection - show count
-        swprintf(confirmMsg, 768, 
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
+        wsprintfW(confirmMsg, 
             L"Are you sure you want to release locks on %d selected files?\n\n"
             L"Warning: This may cause unsaved data loss!", 
             selectedCount);
@@ -633,8 +638,9 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
         // User confirmed - proceed with release
         
         // Update status bar
+        // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
         WCHAR statusMsg[256];
-        swprintf(statusMsg, 256, L"Releasing %d lock(s)...", selectedCount);
+        wsprintfW(statusMsg, L"Releasing %d lock(s)...", selectedCount);
         SetWindowTextW(state->hwndStatus, statusMsg);
         
         // Track success/failure counts
@@ -677,11 +683,13 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
         WCHAR resultMsg[512];
         if (failCount == 0) {
             // All succeeded
-            swprintf(resultMsg, 512, L"Successfully released %d lock(s)!", successCount);
+            // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
+            wsprintfW(resultMsg, L"Successfully released %d lock(s)!", successCount);
             MessageBoxW(hwnd, resultMsg, L"Success", MB_ICONINFORMATION);
         } else {
             // Some or all failed
-            swprintf(resultMsg, 512, 
+            // FUNCTION LINKAGE: wsprintfW is Windows API (user32.lib), no CRT needed
+            wsprintfW(resultMsg, 
                 L"Released %d lock(s).\nFailed to release %d lock(s).", 
                 successCount, failCount);
             MessageBoxW(hwnd, resultMsg, L"Partial Success", MB_ICONWARNING);
@@ -711,6 +719,9 @@ void OnReleaseLock(HWND hwnd, AppState* state) {
  * @param state - Pointer to AppState (passed to UpdateListView)
  */
 void OnSearchChanged(HWND hwnd, AppState* state) {
+    // UNREFERENCED PARAMETER: Suppress compiler warning
+    (void)hwnd;
+    
     // Simply update the display - UpdateListView() reads search box
     // and applies filtering
     UpdateListView(state);
@@ -766,7 +777,9 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             // ============================================
             // STEP 1: Allocate memory for application state
             // ============================================
-            state = (AppState*)malloc(sizeof(AppState));
+            // FUNCTION LINKAGE: MemAlloc uses HeapAlloc from kernel32.lib
+            // WHY HEAP API: No CRT dependency, efficient for small allocations
+            state = (AppState*)MemAlloc(sizeof(AppState));
             if (!state) {
                 // Allocation failed - show error and abort window creation
                 MessageBoxW(hwnd, 
@@ -780,13 +793,11 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             // STEP 2: Initialize state structure
             // ============================================
             // Zero all fields to ensure no garbage data
-            memset(state, 0, sizeof(AppState));
+            // FUNCTION LINKAGE: MemZero is our CRT-free memset replacement
+            MemZero(state, sizeof(AppState));
             
             // Initialize the dynamic array for file locks
             LockArray_Init(&state->locks);
-            
-            // No server field needed (always local machine)
-            state->hwndServer = NULL;
             
             // ============================================
             // STEP 2a: Initialize theme state
@@ -964,7 +975,8 @@ LRESULT CALLBACK MainWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
                 }
                 
                 // Free the AppState structure itself
-                free(state);
+                // FUNCTION LINKAGE: MemFree uses HeapFree from kernel32.lib
+                MemFree(state);
                 state = NULL;  // Prevent use-after-free bugs
             }
             

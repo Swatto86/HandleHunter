@@ -52,12 +52,12 @@
   */
  typedef struct {
      FileLockInfo* items;       // Pointer to dynamically allocated array
-                                 // NULL if not initialized or after Free()
+                                 // NULL if not initialized or after LockArray_Free()
      
-     size_t count;              // Number of items currently in the array
+     DWORD count;               // Number of items currently in the array
                                  // This is the logical size (how many are used)
      
-     size_t capacity;           // Total capacity of the array
+     DWORD capacity;            // Total capacity of the array
                                  // This is the physical size (how many can fit)
                                  // capacity >= count always
  } LockArray;
@@ -74,19 +74,15 @@
      HWND hwndMain;             // Handle to main application window
      HWND hwndListView;         // Handle to ListView control (shows file locks)
      HWND hwndSearch;           // Handle to search edit box
-     HWND hwndServer;           // Handle to server name edit box
      HWND hwndStatus;           // Handle to status bar (bottom of window)
      
      // Data
-     LockArray locks;           // All file locks retrieved from server
-                                 // This is populated by EnumerateOpenFiles()
+     LockArray locks;           // All file locks retrieved from local machine
+                                 // Populated by EnumerateOpenFiles() on refresh
      
      // Current state
      WCHAR searchText[256];     // Current search filter text
                                  // Empty string means "show all"
-     
-     WCHAR currentServer[256];  // Currently connected server name
-                                 // Format: "\\SERVERNAME" or empty if not connected
      
      BOOL isRefreshing;         // Flag indicating if refresh is in progress
                                  // Used to prevent multiple simultaneous refreshes

@@ -1,5 +1,12 @@
-# Build artifacts
+# Build artifacts - MinGW/GCC
 *.o
+
+# Build artifacts - MSVC
+*.obj
+*.ilk
+*.pdb
+
+# Executables and resources
 *.exe
 *.res
 

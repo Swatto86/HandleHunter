@@ -31,8 +31,8 @@
 // ============================================
 // DWM Constants (not in all SDKs)
 // ============================================
-// WHY DEFINE THESE: Some MinGW versions don't include these constants
-//                   Defining them ensures compatibility across toolchains
+// WHY DEFINE THESE: Some Windows SDK versions don't include these constants
+//                   Defining them ensures compatibility across toolchains and SDK versions
 
 // DWMWA_USE_IMMERSIVE_DARK_MODE: DWM attribute for dark mode title bar
 // Available since Windows 10 version 1809 (October 2018 Update)
