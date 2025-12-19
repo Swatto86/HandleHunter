@@ -30,11 +30,11 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "CompanyName",      "HandleHunter"
-            VALUE "FileDescription",  "File Lock Manager for Windows"
+            VALUE "CompanyName",      "Steve Watson"
+            VALUE "FileDescription",  "Lightweight Windows utility for managing file locks"
             VALUE "FileVersion",      "1.0.0.0"
             VALUE "InternalName",     "HandleHunter"
-            VALUE "LegalCopyright",   "Copyright (C) 2025"
+            VALUE "LegalCopyright",   "Copyright (C) 2025 Steve Watson"
             VALUE "OriginalFilename", "HandleHunter.exe"
             VALUE "ProductName",      "HandleHunter"
             VALUE "ProductVersion",   "1.0.0.0"
