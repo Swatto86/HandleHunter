@@ -18,8 +18,8 @@ END
 
 // Version Information
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION     1,0,0,0
-PRODUCTVERSION  1,0,0,0
+FILEVERSION     1,0,1,0
+PRODUCTVERSION  1,0,1,0
 FILEFLAGSMASK   0x3fL
 FILEFLAGS       0x0L
 FILEOS          VOS_NT_WINDOWS32
@@ -32,12 +32,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Steve Watson"
             VALUE "FileDescription",  "Lightweight Windows utility for managing file locks"
-            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "FileVersion",      "1.0.1.0"
             VALUE "InternalName",     "HandleHunter"
             VALUE "LegalCopyright",   "Copyright (C) 2025 Steve Watson"
             VALUE "OriginalFilename", "HandleHunter.exe"
             VALUE "ProductName",      "HandleHunter"
-            VALUE "ProductVersion",   "1.0.0.0"
+            VALUE "ProductVersion",   "1.0.1.0"
         END
     END
     BLOCK "VarFileInfo"

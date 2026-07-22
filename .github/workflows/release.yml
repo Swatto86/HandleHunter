@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build HandleHunter.exe (MSVC)
+        shell: cmd
+        run: |
+          rc.exe /nologo /fo HandleHunter.res HandleHunter.rc || exit /b 1
+          cl /O2 /Os /W4 /DUNICODE /D_UNICODE /nologo /c /GS- main.c gui.c netapi.c lockinfo.c modern_ui.c utilities.c || exit /b 1
+          link /OUT:HandleHunter.exe main.obj gui.obj netapi.obj lockinfo.obj modern_ui.obj utilities.obj HandleHunter.res /SUBSYSTEM:WINDOWS /ENTRY:WinMainCRTStartup /NOLOGO kernel32.lib user32.lib gdi32.lib advapi32.lib netapi32.lib comctl32.lib dwmapi.lib uxtheme.lib || exit /b 1
+          if not exist HandleHunter.exe exit /b 1
+
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis -y --no-progress
+
+      - name: Build NSIS installer
+        shell: pwsh
+        run: |
+          $ver = "${{ github.ref_name }}".TrimStart('v')
+          $exe = (Resolve-Path 'HandleHunter.exe').Path
+          $out = Join-Path (Get-Location) "HandleHunter_${ver}_x64-setup.exe"
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' "/DVER=$ver" "/DSRC=$exe" "/DOUT=$out" ".github\installer.nsi"
+          if (-not (Test-Path $out)) { throw "installer not built" }
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            HandleHunter.exe
+            HandleHunter_*_x64-setup.exe
+          fail_on_unmatched_files: true
